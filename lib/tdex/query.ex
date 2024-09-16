@@ -1,4 +1,8 @@
-defmodule Tdex.Query do
+defmodule TDex.Query do
+  @moduledoc """
+  `TDex.Query` provide api to work with query syntax
+  """
+
   defstruct [
     :name,
     :statement,
@@ -6,7 +10,7 @@ defmodule Tdex.Query do
   ]
 end
 
-defimpl DBConnection.Query, for: Tdex.Query do
+defimpl DBConnection.Query, for: TDex.Query do
   def decode(_query, result, _opts) do
     result
   end

@@ -1,16 +1,23 @@
-defmodule Tdex.DBConnection do
+defmodule TDex.DBConnection do
+  @moduledoc """
+  `TDex.DBConnection` implement DBConnection behavior
+  """
   use DBConnection
-  alias Tdex.Common
   require Logger
   require Skn.Log
 
   @impl true
   def connect(opts) do
-    opts = Map.new(opts)
+    params = Map.new(opts)
     case opts.protocol.connect(opts) do
-      {:ok, pid} -> {:ok, %{opts | conn: pid}}
-      {:error, _} = error -> error
+      {:ok, protocol_state} -> {:ok, %{params: params, protocol: params.protocol, protocol_state: protocol_state}}
+      {:error, reason} -> {:error, reason}
     end
+  end
+
+  @impl true
+  def disconnect(_error, _state) do
+    :ok
   end
 
   @impl true
@@ -49,12 +56,6 @@ defmodule Tdex.DBConnection do
   end
 
   @impl true
-  def disconnect(_error, state) do
-    state.protocol.stop_query(state.conn)
-    :ok
-  end
-
-  @impl true
   def handle_status(_opts, state) do
     {:idle, state}
   end
@@ -68,10 +69,10 @@ defmodule Tdex.DBConnection do
   def handle_execute(query, params, _, %{conn: conn, protocol: protocol} = state) do
     case query do
       %{schema: nil, statement: sql} ->
-        with {:ok, query_params} <- Common.interpolate_params(sql, params),
+        with {:ok, query_params} <- TDex.Utils.interpolate_params(sql, params),
           {:ok, result} <- protocol.query(conn, query_params)
         do
-          {:ok, %Tdex.Query{name: "", statement: query_params}, result, state}
+          {:ok, %TDex.Query{name: "", statement: query_params}, result, state}
         else
           {:error, error} -> {:error, error, state}
         end

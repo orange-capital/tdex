@@ -1,4 +1,4 @@
-defmodule Tdex.Binary do
+defmodule TDex.Binary do
   import Bitwise
 
   def parse_field(<<>>, result), do: Enum.reverse(result)
@@ -88,9 +88,9 @@ defmodule Tdex.Binary do
   end
   def parse_type(9, <<v::64-little, rest::binary>>, precision) do
     ts = case precision do
-      0 -> Timestamp.from_unix(v, :millisecond)
-      1 -> Timestamp.from_unix(v, :microsecond)
-      2 -> Timestamp.from_unix(v, :nanosecond)
+      0 -> TDex.Timestamp.from_unix(v, :millisecond)
+      1 -> TDex.Timestamp.from_unix(v, :microsecond)
+      2 -> TDex.Timestamp.from_unix(v, :nanosecond)
     end
     {ts, rest}
   end

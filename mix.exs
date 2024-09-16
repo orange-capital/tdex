@@ -1,4 +1,4 @@
-defmodule Tdex.MixProject do
+defmodule TDex.MixProject do
   use Mix.Project
 
   def project do
@@ -16,28 +16,29 @@ defmodule Tdex.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {Tdex, []},
+      mod: {TDex, []},
       extra_applications: [
         :logger,
         :jason,
-        :gun,
+        :mint_web_socket,
         :skn_lib,
         :runtime_tools,
         :observer_cli,
-        # :observer,
-        # :wx
-      ],
+      ] ++ extra_apps(Mix.env),
     ]
   end
+
+  defp extra_apps(:prod), do: []
+  defp extra_apps(_), do: [:observer, :wx]
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:skn_lib, git: "git@github.com:skygroup2/skn_lib.git", branch: "main"},
-      {:gun, git: "https://github.com/skygroup2/gun.git", branch: "master"},
-      {:elixir_make, "~> 0.7.7", runtime: false},
+      {:mint_web_socket, "~> 1.0"},
+      {:elixir_make, "~> 0.8.4", runtime: false},
       {:jason, "~> 1.4"},
-      {:db_connection, "~> 2.1"},
+      {:db_connection, "~> 2.7"},
       {:observer_cli, "~> 1.7"}
     ]
   end

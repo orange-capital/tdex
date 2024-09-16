@@ -1,4 +1,4 @@
-defmodule Timestamp do
+defmodule TDex.Timestamp do
 	defstruct year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, nanosecond: 0
 
 	def to_datetime_base_second(%{year: y, month: mon, day: day, hour: h, minute: min, second: s}) do
@@ -8,7 +8,7 @@ defmodule Timestamp do
 	def from_unix(ts, unit\\:nanosecond)
 	def from_unix(ts, :second) do
 		d = DateTime.from_unix!(ts, :second) |> Map.from_struct()
-		struct(%Timestamp{}, d)
+		struct(%__MODULE__{}, d)
 	end
 	def from_unix(ts, :millisecond) do
 		millisecond = rem(ts, 1_000)
@@ -96,7 +96,7 @@ defmodule Timestamp do
 		:io_lib.format("~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.#{format_nano_str(ns)}Z", [year, mon, day, h, min, s]) |> :erlang.list_to_binary
 	end
 
-	def sigil_TS(ts, []) do
+	def sigil_NS(ts, []) do
 		[year, mon, day, hour, min, second, nano] = Regex.split(~r/[\s-:\.]/, ts)
 		{nano, "Z"} = Float.parse("0.#{nano}")
 		d = %DateTime{
@@ -108,24 +108,24 @@ defmodule Timestamp do
 			second: String.to_integer(second), 
 			time_zone: "Etc/UTC", zone_abbr: "UTC", utc_offset: 0, std_offset: 0
 		}
-		%{struct(%Timestamp{}, Map.from_struct(d))| nanosecond: round(nano * 1_000_000_000)}
+		%{struct(%__MODULE__{}, Map.from_struct(d))| nanosecond: round(nano * 1_000_000_000)}
 	end
 
 	defmacro __using__(_opts) do
     quote do
-			import Timestamp, only: [sigil_TS: 2]
+			import TDex.Timestamp, only: [sigil_NS: 2]
 		end
   end
 
 	defimpl Inspect do
 		def inspect(ts, _opts) do
-			Inspect.Algebra.concat(["~TS[", Timestamp.to_string(ts), "]"])
+			Inspect.Algebra.concat(["~NS[", TDex.Timestamp.to_string(ts), "]"])
 		end
 	end
 
 	defimpl String.Chars do
 		def to_string(ts) do
-			Timestamp.to_string(ts)
+			TDex.Timestamp.to_string(ts)
 		end
 	end
 end

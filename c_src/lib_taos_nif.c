@@ -775,9 +775,9 @@ static ErlNifFunc nif_funcs[] = {
         {"taos_select_db_nif",                2,     taos_select_db_nif},
         {"taos_query_nif",               2,     taos_query_nif},
         {"taos_query_a_nif",             4,     taos_query_a_nif},
-        {"taos_stmt_free",             4,     taos_stmt_free_nif},
+        {"taos_stmt_free",             1,     taos_stmt_free_nif},
         {"taos_stmt_prepare",             2,     taos_stmt_prepare_nif},
-        {"taos_stmt_execute_a",             4,     taos_stmt_execute_a_nif},
+        {"taos_stmt_execute_a",             6,     taos_stmt_execute_a_nif},
 };
 
 ERL_NIF_INIT(Elixir.TDex.Wrapper, nif_funcs, init_nif, NULL, NULL, destroy_nif)

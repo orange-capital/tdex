@@ -50,5 +50,5 @@ config :tdex, TDex.Repo,
 
 ## Install
 ```elixir
-{:tdex, git: "git@github.com:cam-quyt/tdex.git", branch: "main"}
+{:tdex, git: "git@github.com:orange-capital/tdex.git", branch: "main"}
 ```

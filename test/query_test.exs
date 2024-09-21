@@ -19,24 +19,24 @@ defmodule QueryTest do
 
   test "test timestamp" do
     t = 1702377891907976277
-    t1 = ~NS[2023-12-12 10:44:51.907976277Z]
+    t1 = ~X[2023-12-12 10:44:51.907976277Z]
     a = TDex.Timestamp.from_unix(t, :nanosecond)
     assert t1 == a
     assert t == TDex.Timestamp.to_unix(a, :nanosecond)
-    t1 = ~NS[2023-12-12 10:44:52.907976277Z]
+    t1 = ~X[2023-12-12 10:44:52.907976277Z]
     assert t1 == TDex.Timestamp.add(a, 1_000_000_000, :nanosecond)
-    t1 = ~NS[2023-12-12 10:44:51.907976278Z]
+    t1 = ~X[2023-12-12 10:44:51.907976278Z]
     assert t1 == TDex.Timestamp.add(a, 1, :nanosecond)
-    t1 = ~NS[2023-12-12 10:45:00.907976277Z]
+    t1 = ~X[2023-12-12 10:45:00.907976277Z]
     assert t1 == TDex.Timestamp.add(a, 9, :second)
-    t1 = ~NS[2023-12-12 11:04:51.907976277Z]
+    t1 = ~X[2023-12-12 11:04:51.907976277Z]
     assert t1 == TDex.Timestamp.add(a, 20, :minute)
-    t1 = ~NS[2023-12-13 06:44:51.907976277Z]
+    t1 = ~X[2023-12-13 06:44:51.907976277Z]
     assert t1 == TDex.Timestamp.add(a, 20, :hour)
-    t1 = ~NS[2024-01-01 10:44:51.907976277Z]
+    t1 = ~X[2024-01-01 10:44:51.907976277Z]
     assert t1 == TDex.Timestamp.add(a, 20, :day)
     assert TDex.Timestamp.to_string(t1) == "2024-01-01 10:44:51.907976277Z"
-    assert (~NS[2023-12-14 03:05:16.000001Z] |> TDex.Timestamp.to_unix()) == 1702523116000001000
+    assert (~X[2023-12-14 03:05:16.000001Z] |> TDex.Timestamp.to_unix()) == 1702523116000001000
   end
 
   test "decode basic types", context do
@@ -113,23 +113,23 @@ defmodule QueryTest do
     assert :ok == query("DROP TABLE IF EXISTS test", [])
     assert :ok == query("CREATE TABLE IF NOT EXISTS test (ts TIMESTAMP, text VARCHAR(255))", [])
     assert :ok == query("SELECT * FROM test", [])
-    assert :ok == query("INSERT INTO test VALUES (?, ?)", [~NS[2018-11-15 10:00:00.000Z], "hoang"], [])
-    assert [%{text: "hoang", ts: ~NS[2018-11-15 10:00:00.000Z]}] == query("SELECT * FROM test LIMIT 1", [])
+    assert :ok == query("INSERT INTO test VALUES (?, ?)", [~X[2018-11-15 10:00:00.000Z], "hoang"], [])
+    assert [%{text: "hoang", ts: ~X[2018-11-15 10:00:00.000Z]}] == query("SELECT * FROM test LIMIT 1", [])
   end
 
   test "update", context do
     assert :ok == query("CREATE TABLE IF NOT EXISTS test (ts TIMESTAMP, text VARCHAR(255))", [])
-    assert :ok == query("INSERT INTO test VALUES (?, ?)", [~NS[2018-11-15 10:00:00.000Z], "hoang1"], [])
-    assert [%{text: "hoang1", ts: ~NS[2018-11-15 10:00:00.000Z]}] == query("SELECT * FROM test LIMIT 1", [])
+    assert :ok == query("INSERT INTO test VALUES (?, ?)", [~X[2018-11-15 10:00:00.000Z], "hoang1"], [])
+    assert [%{text: "hoang1", ts: ~X[2018-11-15 10:00:00.000Z]}] == query("SELECT * FROM test LIMIT 1", [])
   end
 
   test "multi row result struct", context do
     assert :ok == query("CREATE TABLE IF NOT EXISTS test1 (ts TIMESTAMP, text VARCHAR(255))", [])
-    assert :ok == query("INSERT INTO test1 VALUES (?, ?)", [~NS[2018-11-15 10:00:00.000Z], "hoang1"], [])
-    assert :ok == query("INSERT INTO test1 VALUES (?, ?)", [~NS[2018-11-16 10:00:00.000Z], "hoang2"], [])
+    assert :ok == query("INSERT INTO test1 VALUES (?, ?)", [~X[2018-11-15 10:00:00.000Z], "hoang1"], [])
+    assert :ok == query("INSERT INTO test1 VALUES (?, ?)", [~X[2018-11-16 10:00:00.000Z], "hoang2"], [])
     assert [
-      %{text: "hoang1", ts: ~NS[2018-11-15 10:00:00.000Z]},
-      %{text: "hoang2", ts: ~NS[2018-11-16 10:00:00.000Z]}
+      %{text: "hoang1", ts: ~X[2018-11-15 10:00:00.000Z]},
+      %{text: "hoang2", ts: ~X[2018-11-16 10:00:00.000Z]}
     ] == query("SELECT * FROM test1", [])
   end
 end

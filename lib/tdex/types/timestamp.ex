@@ -1,4 +1,6 @@
 defmodule TDex.Timestamp do
+  alias TDex.Timestamp
+
 	defstruct year: 1970, month: 1, day: 1, hour: 0, minute: 0, second: 0, nanosecond: 0
 
 	def to_datetime_base_second(%{year: y, month: mon, day: day, hour: h, minute: min, second: s}) do
@@ -96,7 +98,7 @@ defmodule TDex.Timestamp do
 		:io_lib.format("~4..0B-~2..0B-~2..0B ~2..0B:~2..0B:~2..0B.#{format_nano_str(ns)}Z", [year, mon, day, h, min, s]) |> :erlang.list_to_binary
 	end
 
-	def sigil_NS(ts, []) do
+	def sigil_X(ts, []) do
 		[year, mon, day, hour, min, second, nano] = Regex.split(~r/[\s-:\.]/, ts)
 		{nano, "Z"} = Float.parse("0.#{nano}")
 		d = %DateTime{
@@ -113,13 +115,13 @@ defmodule TDex.Timestamp do
 
 	defmacro __using__(_opts) do
     quote do
-			import TDex.Timestamp, only: [sigil_NS: 2]
+			import TDex.Timestamp, only: [sigil_X: 2]
 		end
   end
 
 	defimpl Inspect do
 		def inspect(ts, _opts) do
-			Inspect.Algebra.concat(["~NS[", TDex.Timestamp.to_string(ts), "]"])
+			Inspect.Algebra.concat(["~X[", TDex.Timestamp.to_string(ts), "]"])
 		end
 	end
 

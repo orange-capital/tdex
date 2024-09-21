@@ -20,7 +20,6 @@ defmodule TDex.MixProject do
       extra_applications: [
         :logger,
         :jason,
-        :mint_web_socket,
         :skn_lib,
         :runtime_tools,
         :observer_cli,
@@ -35,7 +34,6 @@ defmodule TDex.MixProject do
   defp deps do
     [
       {:skn_lib, git: "git@github.com:skygroup2/skn_lib.git", branch: "main"},
-      {:mint_web_socket, "~> 1.0"},
       {:elixir_make, "~> 0.8.4", runtime: false},
       {:jason, "~> 1.4"},
       {:db_connection, "~> 2.7"},

@@ -3,11 +3,30 @@ defmodule TDex.Query do
   `TDex.Query` provide api to work with query syntax
   """
 
+  @type t :: %__MODULE__{
+    name: iodata,
+    statement: iodata,
+    cache: TDex.Wrapper.stmt_t,
+    spec: [{atom, atom, non_neg_integer}],
+    mode: :stmt | :query,
+    async: bool
+  }
+
   defstruct [
     :name,
     :statement,
-    :schema
+    :cache,
+    :spec,
+    :mode,
+    :async
   ]
+
+  def close(%__MODULE__{cache: cache}) do
+    if cache != nil do
+      TDex.Wrapper.taos_stmt_free(cache)
+    end
+  end
+  def close(_), do: :ok
 end
 
 defimpl DBConnection.Query, for: TDex.Query do

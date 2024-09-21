@@ -40,7 +40,6 @@ typedef struct {
 
 typedef struct {
     uint64_t id;
-    uint32_t total_row;
     ErlNifPid pid;
     ErlNifEnv* env;
 } CB_DATA_T;
@@ -396,29 +395,9 @@ static inline void send_error_to_cb(CB_DATA_T* cb, TAOS_RES* res) {
 static inline int parse_taos_res_a(CB_DATA_T* cb_data, TAOS_RES* res, int number_of_row) {
     ERL_NIF_TERM pi_atom_reply = enif_make_atom(cb_data->env, "taos_reply");
     ERL_NIF_TERM pi_atom_ok = enif_make_atom(cb_data->env, "ok");
-    ERL_NIF_TERM reply, metadata, row_data, row_header;
+    ERL_NIF_TERM reply, row_data;
     TAOS_FIELD* fields = taos_fetch_fields(res);
     int field_count = taos_field_count(res);
-    if (cb_data->total_row == 0) {
-        int precision = taos_result_precision(res);
-        int affected_rows = taos_affected_rows(res);
-        ERL_NIF_TERM* header_array = enif_alloc(sizeof(ERL_NIF_TERM) * field_count);
-        if (header_array == NULL) {
-            return 0;
-        }
-        for(int i = 0; i < field_count; i++) {
-            header_array[i] = enif_make_tuple2(cb_data->env,
-                                           enif_make_string(cb_data->env, fields[i].name, ERL_NIF_UTF8),
-                                           enif_make_uint(cb_data->env, fields[i].type));
-        }
-        row_header = enif_make_tuple_from_array(cb_data->env, header_array, field_count);
-        metadata = enif_make_tuple3(cb_data->env,
-                                    enif_make_uint(cb_data->env, precision),
-                                    enif_make_uint(cb_data->env, affected_rows),
-                                    row_header);
-    } else {
-        metadata = enif_make_atom(cb_data->env, "nil");
-    }
     row_data = enif_make_list(cb_data->env, 0);
     for (int i = 0; i < number_of_row; i++) {
         TAOS_ROW row = taos_fetch_row(res);
@@ -432,9 +411,8 @@ static inline int parse_taos_res_a(CB_DATA_T* cb_data, TAOS_RES* res, int number
         }
         row_data = enif_make_list_cell(cb_data->env, enif_make_tuple_from_array(cb_data->env, data_array, field_count), row_data);
     }
-    reply = enif_make_tuple3(cb_data->env, pi_atom_reply, enif_make_uint64(cb_data->env, cb_data->id), enif_make_tuple3(cb_data->env, pi_atom_ok, metadata, row_data));
+    reply = enif_make_tuple3(cb_data->env, pi_atom_reply, enif_make_uint64(cb_data->env, cb_data->id), enif_make_tuple2(cb_data->env, pi_atom_ok, row_data));
     enif_send(NULL, &cb_data->pid, cb_data->env, reply);
-    cb_data->total_row += number_of_row;
     enif_clear_env(cb_data->env);
     taos_fetch_rows_a(res, taos_fetch_rows_a_cb, cb_data);
     return 1;
@@ -450,8 +428,23 @@ void taos_fetch_rows_a_cb(void* params, TAOS_RES* res, int num_of_row) {
             cb_param_free(cb);
         }
     } else {
+        ERL_NIF_TERM metadata, row_header;
+        TAOS_FIELD* fields = taos_fetch_fields(res);
+        int field_count = taos_field_count(res);
+        int precision = taos_result_precision(res);
+        int affected_rows = taos_affected_rows(res);
+        ERL_NIF_TERM* header_array = enif_alloc(sizeof(ERL_NIF_TERM) * field_count);
+        for(int i = 0; i < field_count; i++) {
+            header_array[i] = enif_make_tuple2(cb->env, enif_make_string(cb->env, fields[i].name, ERL_NIF_UTF8), enif_make_uint(cb->env, fields[i].type));
+        }
+        row_header = enif_make_tuple_from_array(cb->env, header_array, field_count);
+        metadata = enif_make_tuple3(cb->env,
+                                    enif_make_uint(cb->env, precision),
+                                    enif_make_uint(cb->env, affected_rows),
+                                    row_header);
         ERL_NIF_TERM pi_atom_reply = enif_make_atom(cb->env, "taos_reply");
-        reply = enif_make_tuple2(cb->env, pi_atom_reply, enif_make_uint64(cb->env, cb->id));
+        ERL_NIF_TERM pi_atom_ok = enif_make_atom(cb->env, "ok");
+        reply = enif_make_tuple3(cb->env, pi_atom_reply, enif_make_uint64(cb->env, cb->id), enif_make_tuple2(cb->env, pi_atom_ok, metadata));
         enif_send(NULL, &cb->pid, cb->env, reply);
         taos_free_result(res);
         cb_param_free(cb);
@@ -489,7 +482,6 @@ static ERL_NIF_TERM taos_query_a_nif(ErlNifEnv *env, int argc, const ERL_NIF_TER
     if (cb_data == NULL) {
         return enif_make_tuple2(env, atom_error, atom_oom);
     }
-    cb_data->total_row = 0;
     cb_data->env = enif_alloc_env();
     if (cb_data->env == NULL) {
         enif_free(cb_data);
@@ -662,7 +654,6 @@ static ERL_NIF_TERM taos_stmt_execute_a_nif(ErlNifEnv *env, int argc, const ERL_
     if (cb_data == NULL) {
         return enif_make_tuple2(env, atom_error, atom_oom);
     }
-    cb_data->total_row = 0;
     cb_data->env = enif_alloc_env();
     if (cb_data->env == NULL) {
         enif_free(cb_data);

@@ -767,7 +767,7 @@ static ErlNifFunc nif_funcs[] = {
         {"taos_query_nif",               2,     taos_query_nif},
         {"taos_query_a_nif",             4,     taos_query_a_nif},
         {"taos_stmt_free",             1,     taos_stmt_free_nif},
-        {"taos_stmt_prepare",             2,     taos_stmt_prepare_nif},
+        {"taos_stmt_prepare_nif",             2,     taos_stmt_prepare_nif},
         {"taos_stmt_execute_a",             6,     taos_stmt_execute_a_nif},
 };
 

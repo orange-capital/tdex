@@ -386,8 +386,7 @@ static inline void send_error_to_cb(CB_DATA_T* cb, TAOS_RES* res) {
 }
 
 static inline int parse_taos_res_a(CB_DATA_T* cb_data, TAOS_RES* res, int number_of_row) {
-    ERL_NIF_TERM pi_atom_reply = enif_make_atom(cb_data->env, "taos_reply");
-    ERL_NIF_TERM pi_atom_ok = enif_make_atom(cb_data->env, "ok");
+    ERL_NIF_TERM pi_atom_reply = enif_make_atom(cb_data->env, "taos_data");
     ERL_NIF_TERM reply, row_data;
     TAOS_FIELD* fields = taos_fetch_fields(res);
     int field_count = taos_field_count(res);
@@ -404,7 +403,7 @@ static inline int parse_taos_res_a(CB_DATA_T* cb_data, TAOS_RES* res, int number
         }
         row_data = enif_make_list_cell(cb_data->env, enif_make_tuple_from_array(cb_data->env, data_array, field_count), row_data);
     }
-    reply = enif_make_tuple3(cb_data->env, pi_atom_reply, enif_make_uint64(cb_data->env, cb_data->id), enif_make_tuple2(cb_data->env, pi_atom_ok, row_data));
+    reply = enif_make_tuple3(cb_data->env, pi_atom_reply, enif_make_uint64(cb_data->env, cb_data->id), row_data);
     enif_send(NULL, &cb_data->pid, cb_data->env, reply);
     enif_clear_env(cb_data->env);
     taos_fetch_rows_a(res, taos_fetch_rows_a_cb, cb_data);

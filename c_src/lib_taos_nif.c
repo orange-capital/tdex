@@ -17,12 +17,8 @@ static ERL_NIF_TERM atom_sql_too_big;
 static ERL_NIF_TERM atom_invalid_callback_args;
 static ERL_NIF_TERM atom_invalid_data;
 static ERL_NIF_TERM atom_oom;
-static ERL_NIF_TERM atom_over_size;
-static ERL_NIF_TERM atom_nil;
-static ERL_NIF_TERM atom_true;
-static ERL_NIF_TERM atom_false;
-static ERL_NIF_TERM atom_json;
-static ERL_NIF_TERM atom_ts;
+static ERL_NIF_TERM atom_str_too_big;
+
 
 typedef struct {
     TAOS *taos;
@@ -165,7 +161,7 @@ static ERL_NIF_TERM taos_get_current_db_nif(ErlNifEnv* env, int argc, const ERL_
     int required_len = 0;
     memset(db_name, 0, DB_NAME_MAX_LEN);
     if (taos_get_current_db(taos_obj->taos, db_name, DB_NAME_MAX_LEN, &required_len) != 0) {
-        return enif_make_tuple2(env, atom_error, atom_over_size);
+        return enif_make_tuple2(env, atom_error, atom_str_too_big);
     }
     ErlNifBinary db_bin;
     if(!enif_alloc_binary(strlen(db_name), &db_bin)) {
@@ -222,14 +218,14 @@ static inline int parse_row_data(ErlNifEnv *env, ERL_NIF_TERM *row_data_array, i
     for(int i = 0; i < field_count; i++) {
         switch (fields[i].type) {
             case TSDB_DATA_TYPE_NULL:
-                row_data_array[i] = atom_nil;
+                row_data_array[i] = enif_make_atom(env, "nil");
                 break;
             case TSDB_DATA_TYPE_BOOL:
                 int8_val = *((int8_t *)row[i]);
                 if (int8_val) {
-                    row_data_array[i] = atom_true;
+                    row_data_array[i] = enif_make_atom(env, "true");
                 } else {
-                    row_data_array[i] = atom_false;
+                    row_data_array[i] = enif_make_atom(env,  "false");
                 }
                 break;
             case TSDB_DATA_TYPE_TINYINT:
@@ -274,12 +270,9 @@ static inline int parse_row_data(ErlNifEnv *env, ERL_NIF_TERM *row_data_array, i
                 break;
             case TSDB_DATA_TYPE_TIMESTAMP:
                 int64_val = *((int64_t *)row[i]);
-                row_data_array[i] = enif_make_tuple2(env, atom_ts, enif_make_int64(env, int64_val));
+                row_data_array[i] = enif_make_int64(env, int64_val);
                 break;
             case TSDB_DATA_TYPE_JSON:
-                row_data_array[i] = atom_json;
-                break;
-
             case TSDB_DATA_TYPE_BINARY:
             case TSDB_DATA_TYPE_NCHAR:
             case TSDB_DATA_TYPE_VARBINARY:
@@ -535,7 +528,7 @@ static ERL_NIF_TERM taos_stmt_prepare_nif(ErlNifEnv *env, int argc, const ERL_NI
 }
 
 static inline void stmt_free_bind(TAOS_MULTI_BIND* bind_params, int bind_size) {
-    for(int i = 0; i < 1; i++) {
+    for(int i = 0; i < bind_size; i++) {
         if(bind_params[i].length != NULL) {
             enif_free(bind_params[i].length);
         }
@@ -543,16 +536,16 @@ static inline void stmt_free_bind(TAOS_MULTI_BIND* bind_params, int bind_size) {
     enif_free(bind_params);
 }
 
-static ERL_NIF_TERM taos_stmt_execute_a_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    if (argc != 6) {
+static ERL_NIF_TERM taos_stmt_execute_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    if (argc != 4) {
         return enif_make_badarg(env);
     }
     WRAP_TAOS_STMT *stmt_obj = NULL;
     const ERL_NIF_TERM* spec;
     const ERL_NIF_TERM* data;
     const ERL_NIF_TERM* var_data;
-    int spec_size, col_size, data_size, var_data_size, bind_type, error_code;
-    CB_DATA_T* cb_data;
+    const ERL_NIF_TERM* var_data_len;
+    int spec_size, col_size, data_size, var_data_size, var_data_len_size, bind_type, error_code;
     ErlNifBinary cell_data;
     TAOS_MULTI_BIND* bind_params;
     char is_null = 1;
@@ -593,24 +586,25 @@ static ERL_NIF_TERM taos_stmt_execute_a_nif(ErlNifEnv *env, int argc, const ERL_
         bind_params[i].num = data_size;
         switch (bind_params[i].buffer_type) {
             case TSDB_DATA_TYPE_NULL:
-                bind_params->buffer_length = 0;
+                bind_params[i].buffer_length = 0;
                 break;
             case TSDB_DATA_TYPE_BOOL:
             case TSDB_DATA_TYPE_TINYINT:
             case TSDB_DATA_TYPE_UTINYINT:
-                bind_params->buffer_length = sizeof(uint8_t);
+                bind_params[i].buffer_length = sizeof(uint8_t);
                 break;
             case TSDB_DATA_TYPE_SMALLINT:
             case TSDB_DATA_TYPE_USMALLINT:
-                bind_params->buffer_length = sizeof(uint16_t);
+                bind_params[i].buffer_length = sizeof(uint16_t);
                 break;
             case TSDB_DATA_TYPE_INT:
             case TSDB_DATA_TYPE_UINT:
-                bind_params->buffer_length = sizeof(uint32_t);
+                bind_params[i].buffer_length = sizeof(uint32_t);
                 break;
             case TSDB_DATA_TYPE_BIGINT:
             case TSDB_DATA_TYPE_UBIGINT:
-                bind_params->buffer_length = sizeof(uint64_t);
+            case TSDB_DATA_TYPE_TIMESTAMP:
+                bind_params[i].buffer_length = sizeof(uint64_t);
                 break;
             case TSDB_DATA_TYPE_BINARY:
             case TSDB_DATA_TYPE_NCHAR:
@@ -623,7 +617,7 @@ static ERL_NIF_TERM taos_stmt_execute_a_nif(ErlNifEnv *env, int argc, const ERL_
                     stmt_free_bind(bind_params, spec_size);
                     return enif_make_tuple2(env, atom_error, atom_invalid_data);
                 }
-                if (!enif_get_uint64(env, var_data[0], &bind_params->buffer_length)) {
+                if (!enif_get_uint64(env, var_data[0], &bind_params[i].buffer_length)) {
                     stmt_free_bind(bind_params, spec_size);
                     return enif_make_tuple2(env, atom_error, atom_invalid_data);
                 }
@@ -631,7 +625,22 @@ static ERL_NIF_TERM taos_stmt_execute_a_nif(ErlNifEnv *env, int argc, const ERL_
                     stmt_free_bind(bind_params, spec_size);
                     return enif_make_tuple2(env, atom_error, atom_invalid_data);
                 }
-                bind_params->buffer = cell_data.data;
+                if (!enif_get_tuple(env, var_data[1], &var_data_len_size, &var_data_len)) {
+                    stmt_free_bind(bind_params, spec_size);
+                    return enif_make_tuple2(env, atom_error, atom_invalid_data);
+                }
+                bind_params[i].buffer = cell_data.data;
+                bind_params[i].length = enif_alloc(data_size * sizeof(int32_t));
+                if (bind_params[i].length == NULL) {
+                    stmt_free_bind(bind_params, spec_size);
+                    return enif_make_tuple2(env, atom_error, atom_oom);
+                }
+                for (int j = 0; j < var_data_len_size; j++) {
+                    if(!enif_get_int(env, var_data_len[i], &bind_params[i].length[j])) {
+                        stmt_free_bind(bind_params, spec_size);
+                        return enif_make_tuple2(env, atom_error, atom_invalid_data);
+                    }
+                }
                 break;
             default:
                 stmt_free_bind(bind_params, spec_size);
@@ -639,47 +648,33 @@ static ERL_NIF_TERM taos_stmt_execute_a_nif(ErlNifEnv *env, int argc, const ERL_
         }
     }
     error_code = taos_stmt_bind_param_batch(stmt_obj->stmt, bind_params);
+    stmt_free_bind(bind_params, spec_size);
     if (error_code != 0) {
-        stmt_free_bind(bind_params, spec_size);
         return make_taos_error_tuple(env, taos_stmt_errstr(stmt_obj->stmt), atom_error, atom_oom);
     }
     error_code = taos_stmt_add_batch(stmt_obj->stmt);
     if (error_code != 0) {
-        stmt_free_bind(bind_params, spec_size);
         return make_taos_error_tuple(env, taos_stmt_errstr(stmt_obj->stmt), atom_error, atom_oom);
-    }
-    stmt_free_bind(bind_params, spec_size);
-    // alloc cb_data
-    cb_data = (CB_DATA_T*)enif_alloc(sizeof(CB_DATA_T));
-    if (cb_data == NULL) {
-        return enif_make_tuple2(env, atom_error, atom_oom);
-    }
-    cb_data->env = enif_alloc_env();
-    if (cb_data->env == NULL) {
-        enif_free(cb_data);
-        return enif_make_tuple2(env, atom_error, atom_oom);
-    }
-    if (!enif_get_local_pid(env, argv[4], &cb_data->pid)) {
-        enif_free(cb_data);
-        return enif_make_tuple2(env, atom_error, atom_invalid_callback_args);
-    }
-    if (!enif_get_uint64(env, argv[5], &cb_data->id)) {
-        enif_free(cb_data);
-        return enif_make_tuple2(env, atom_error, atom_invalid_callback_args);
     }
     error_code = taos_stmt_execute(stmt_obj->stmt);
     if (error_code != 0) {
-        enif_free(cb_data);
         return make_taos_error_tuple(env, taos_stmt_errstr(stmt_obj->stmt), atom_error, atom_oom);
     }
     TAOS_RES* res = taos_stmt_use_result(stmt_obj->stmt);
     error_code = taos_errno(res);
     if (error_code != 0) {
-        enif_free(cb_data);
         return make_taos_error_tuple(env, taos_errstr(stmt_obj->stmt), atom_error, atom_oom);
     }
-    taos_fetch_rows_a(res, taos_fetch_rows_a_cb, cb_data);
-    return atom_ok;
+    int precision = taos_result_precision(res);
+    int affected_rows = taos_affected_rows(res);
+    ERL_NIF_TERM row_header, row_data;
+    if (!parse_taos_res(env, &row_header, &row_data, res)) {
+        return enif_make_tuple2(env, atom_error, atom_oom);
+    }
+    ERL_NIF_TERM metadata = enif_make_tuple3(env, enif_make_uint(env, precision),
+                                             enif_make_uint(env, affected_rows),
+                                             row_header);
+    return enif_make_tuple3(env, atom_ok, metadata, row_data);
 }
 
 static ERL_NIF_TERM taos_stmt_free_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
@@ -739,13 +734,8 @@ static int init_nif(ErlNifEnv *env, void **priv_data, __attribute__((unused)) ER
     atom_sql_too_big = enif_make_atom(env, "sql_too_big");
     atom_oom = enif_make_atom(env, "out_of_memory ");
     atom_invalid_callback_args = enif_make_atom(env, "invalid_callback_args");
-    atom_over_size = enif_make_atom(env, "str_over_size");
+    atom_str_too_big = enif_make_atom(env, "str_too_big");
     atom_invalid_data = enif_make_atom(env, "invalid_data");
-    atom_nil = enif_make_atom(env, "nil");
-    atom_true = enif_make_atom(env, "true");
-    atom_false = enif_make_atom(env, "false");
-    atom_json = enif_make_atom(env, "json");
-    atom_ts = enif_make_atom(env, "ts");
     return 0;
 }
 
@@ -757,18 +747,18 @@ static void destroy_nif(__attribute__((unused)) ErlNifEnv *env, void *priv_data)
 }
 
 static ErlNifFunc nif_funcs[] = {
-        {"taos_connect_nif",                  6, taos_connect_nif},
-        {"taos_close",                    1,     taos_close_nif},
-        {"taos_options_nif",                 2,      taos_options_nif},
-        {"taos_get_current_db",          1,      taos_get_current_db_nif},
-        {"taos_get_server_info",         1,      taos_get_server_info_nif},
-        {"taos_get_client_info",          0,     taos_get_client_info_nif},
-        {"taos_select_db_nif",                2,     taos_select_db_nif},
-        {"taos_query_nif",               2,     taos_query_nif},
-        {"taos_query_a_nif",             4,     taos_query_a_nif},
-        {"taos_stmt_free",             1,     taos_stmt_free_nif},
-        {"taos_stmt_prepare_nif",             2,     taos_stmt_prepare_nif},
-        {"taos_stmt_execute_a",             6,     taos_stmt_execute_a_nif},
+        {"taos_connect_nif",                  6, taos_connect_nif, ERL_NIF_DIRTY_JOB_IO_BOUND},
+        {"taos_close",                    1,     taos_close_nif,           0},
+        {"taos_options_nif",                 2,  taos_options_nif,         0},
+        {"taos_get_current_db",          1,      taos_get_current_db_nif,  0},
+        {"taos_get_server_info",         1,      taos_get_server_info_nif, 0},
+        {"taos_get_client_info",          0,     taos_get_client_info_nif, 0},
+        {"taos_select_db_nif",                2, taos_select_db_nif,       ERL_NIF_DIRTY_JOB_IO_BOUND},
+        {"taos_query_nif",               2,      taos_query_nif,           ERL_NIF_DIRTY_JOB_IO_BOUND},
+        {"taos_query_a_nif",             4,      taos_query_a_nif,         ERL_NIF_DIRTY_JOB_IO_BOUND},
+        {"taos_stmt_free",             1,        taos_stmt_free_nif,       0},
+        {"taos_stmt_prepare_nif",             2, taos_stmt_prepare_nif,    ERL_NIF_DIRTY_JOB_IO_BOUND},
+        {"taos_stmt_execute_nif",             4, taos_stmt_execute_nif,    ERL_NIF_DIRTY_JOB_IO_BOUND},
 };
 
 ERL_NIF_INIT(Elixir.TDex.Wrapper, nif_funcs, init_nif, NULL, NULL, destroy_nif)

@@ -147,8 +147,9 @@ defmodule TDex.Wrapper do
   end
 
   defp size_of_iodata(row_val) when is_binary(row_val), do: byte_size(row_val)
+  defp size_of_iodata(row_val) when is_list(row_val), do: length(row_val)
   defp size_of_iodata(%TDex.Timestamp{}), do: 8
-  defp size_of_iodata(row_val), do: length(row_val)
+  defp size_of_iodata(_row_val), do: 8
 
   defp stmt_format_data_by_type(row_name, row_type, data) do
     Enum.reduce(data, {"", []}, fn row, {acc, acc_len} ->

@@ -34,10 +34,11 @@ defmodule TDex.MixProject do
   defp deps do
     [
       {:skn_lib, git: "git@github.com:skygroup2/skn_lib.git", branch: "main"},
-      {:elixir_make, "~> 0.8.4", runtime: false},
       {:jason, "~> 1.4"},
       {:db_connection, "~> 2.7"},
-      {:observer_cli, "~> 1.7"}
+      {:observer_cli, "~> 1.7"},
+      {:elixir_make, "~> 0.8.4", runtime: false},
+      {:benchee, "~> 1.0", only: :dev}
     ]
   end
 end

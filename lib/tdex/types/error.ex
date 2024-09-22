@@ -1,12 +1,15 @@
 defmodule TDex.Error do
-  defexception [:code, :req_id, :message, :action]
+  @moduledoc """
+  `TDex.Error` provide struct for query error
+  """
+
+  defexception [:message, :conn, :query]
 
   def exception(opts) do
-    code = Keyword.get(opts, :code)
     message = Keyword.get(opts, :message)
-    req_id = Keyword.get(opts, :req_id)
-    action = Keyword.get(opts, :action)
-    %TDex.Error{code: code, message: message, req_id: req_id, action: action}
+    conn = Keyword.get(opts, :conn)
+    query = Keyword.get(opts, :query)
+    %TDex.Error{message: message, conn: conn, query: query}
   end
 
   def message(e) do

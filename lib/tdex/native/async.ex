@@ -28,7 +28,7 @@ defmodule TDex.Native.Async do
   end
 
   def handle_call({:query, conn, sql, timeout}, from, %{queries: queries, query_ptr: query_ptr} = state) do
-    case TDex.Wrapper.taos_query_a(conn, sql) do
+    case TDex.Wrapper.taos_query_a(conn, sql, self(), query_ptr) do
       :ok ->
         ts_now = System.system_time(:millisecond)
         queries = List.keystore(queries, query_ptr, 0, {query_ptr, from, ts_now + timeout})
@@ -78,7 +78,7 @@ defmodule TDex.Native.Async do
   def handle_info(:check_tick, %{queries: queries, query_result: query_result} = state) do
     reset_timer(:check_tick, :check_tick, 1000)
     ts_now = System.system_time(:millisecond)
-    {queries, drop} = Enum.reduce(queries, [], [], fn {id, from, timeout_at}, {acc_queries, acc_drop} ->
+    {queries, drop} = Enum.reduce(queries, {[], []}, fn {id, from, timeout_at}, {acc_queries, acc_drop} ->
       if ts_now > timeout_at do
         GenServer.reply(from, {:error, :timeout})
         {acc_queries, [id| acc_drop]}

@@ -1,3 +1,7 @@
 defmodule TDex.Result do
-  defstruct [:code, :req_id, :rows, affected_rows: 0, message: nil]
+  @moduledoc """
+  `TDex.Result` parse raw result to struct
+  """
+  defstruct [:code, :header, :data, message: nil]
+
 end

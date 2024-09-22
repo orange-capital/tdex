@@ -700,7 +700,7 @@ static void free_taos_stmt_resource(__attribute__((unused)) ErlNifEnv *env, void
 }
 
 static inline int init_taos_resource(ErlNifEnv *env) {
-    const char *mod_taos = "TDEX";
+    const char *mod_taos = "TDex";
     const char *name_taos = "TAOS_TYPE";
     const char *name_stmt_type = "TAOS_STMT_TYPE";
     int flags = ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER;
@@ -733,7 +733,7 @@ static int init_nif(ErlNifEnv *env, void **priv_data, __attribute__((unused)) ER
     atom_oom = enif_make_atom(env, "out_of_memory ");
     atom_invalid_callback_args = enif_make_atom(env, "invalid_callback_args");
     atom_str_too_big = enif_make_atom(env, "str_too_big");
-    atom_invalid_data = enif_make_atom(env, "invalid_data");
+    atom_invalid_data = enif_make_atom(env, "invalid_stmt_data");
     return 0;
 }
 
@@ -746,15 +746,15 @@ static void destroy_nif(__attribute__((unused)) ErlNifEnv *env, void *priv_data)
 
 static ErlNifFunc nif_funcs[] = {
         {"taos_connect_nif",                  6, taos_connect_nif, ERL_NIF_DIRTY_JOB_IO_BOUND},
-        {"taos_close",                    1,     taos_close_nif,           0},
+        {"taos_close",                    1,     taos_close_nif,           ERL_NIF_DIRTY_JOB_IO_BOUND},
         {"taos_options_nif",                 2,  taos_options_nif,         0},
-        {"taos_get_current_db",          1,      taos_get_current_db_nif,  0},
+        {"taos_get_current_db",          1,      taos_get_current_db_nif,  ERL_NIF_DIRTY_JOB_IO_BOUND},
         {"taos_get_server_info",         1,      taos_get_server_info_nif, 0},
         {"taos_get_client_info",          0,     taos_get_client_info_nif, 0},
         {"taos_select_db_nif",                2, taos_select_db_nif,       ERL_NIF_DIRTY_JOB_IO_BOUND},
         {"taos_query_nif",               2,      taos_query_nif,           ERL_NIF_DIRTY_JOB_IO_BOUND},
         {"taos_query_a_nif",             4,      taos_query_a_nif,         ERL_NIF_DIRTY_JOB_IO_BOUND},
-        {"taos_stmt_free",             1,        taos_stmt_free_nif,       0},
+        {"taos_stmt_free",             1,        taos_stmt_free_nif,       ERL_NIF_DIRTY_JOB_IO_BOUND},
         {"taos_stmt_prepare_nif",             2, taos_stmt_prepare_nif,    ERL_NIF_DIRTY_JOB_IO_BOUND},
         {"taos_stmt_execute_nif",             4, taos_stmt_execute_nif,    ERL_NIF_DIRTY_JOB_IO_BOUND},
 };

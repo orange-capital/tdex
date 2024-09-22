@@ -6,26 +6,26 @@ defmodule TDex.Native do
   alias TDex.Wrapper
 
   def connect(args) do
-    Wrapper.taos_connect(args.hostname, args.username, args.password, args.database, args.port)
+    Wrapper.taos_connect(args.hostname, args.port, args.username, args.password, args.database)
   end
 
-  def query(_conn, _statement) do
-    :ok
+  def query(conn, statement) do
+    Wrapper.taos_query(conn, statement)
   end
 
-  def stmt_prepare(conn, sql) do
+  def query_a(conn, statement) do
+    TDex.Native.Async.query(conn, statement)
+  end
+
+  def prepare(conn, sql) do
     Wrapper.taos_stmt_prepare(conn, sql)
   end
 
-  def stmt_execute(stmt, spec, data) do
+  def execute(stmt, spec, data) do
     Wrapper.taos_stmt_execute(stmt, spec, data)
   end
 
-  def stmt_free(stmt) do
-    Wrapper.taos_stmt_free(stmt)
-  end
-
-  def stop(conn) do
+  def close(conn) do
     Wrapper.taos_close(conn)
   end
 end

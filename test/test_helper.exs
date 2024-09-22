@@ -106,31 +106,3 @@ INSERT INTO table_varchar VALUES("2023-10-18", "hoang");
 """
 
 TSQL.cmd(["-s", sql_insert_data], "tdex_test")
-
-defmodule TDex.TestHelper do
-  defmacro query(stat, params, opts \\ []) do
-    quote do
-      case TDex.query(var!(context)[:pid], unquote(stat), unquote(params), unquote(opts)) do
-        {:ok, %TDex.Query{}, %TDex.Result{rows: []}} -> :ok
-        {:ok, %TDex.Query{}, %TDex.Result{rows: rows}} -> rows
-        {:error, err} -> err
-      end
-    end
-  end
-
-  defmacro query!(stat, params, opts \\ []) do
-    quote do
-      TDex.query!(var!(context)[:pid], unquote(stat), unquote(params), unquote(opts))
-    end
-  end
-
-  defmacro execute(query, params, opts \\ []) do
-    quote do
-      case TDex.execute(var!(context)[:pid], unquote(query), unquote(params), unquote(opts)) do
-        {:ok, %TDex.Query{}, %TDex.Result{rows: []}} -> :ok
-        {:ok, %TDex.Query{}, %TDex.Result{rows: rows}} -> rows
-        {:error, err} -> err
-      end
-    end
-  end
-end

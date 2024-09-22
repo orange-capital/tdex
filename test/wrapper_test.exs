@@ -46,7 +46,25 @@ defmodule WrapperTest do
     :ok = TDex.Wrapper.taos_close(conn)
   end
 
-  @tag wip: true
+  test "async_select_no_tab", _context do
+    # Seem async api not working for this case
+    {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "tdex_test")
+    :ok = TDex.Wrapper.taos_query_a(conn, "SELECT NULL", self(), 1)
+    recv_taos_async()
+    recv_taos_async()
+    :ok = TDex.Wrapper.taos_query_a(conn, "SELECT 'e'", self(), 1)
+    recv_taos_async()
+    recv_taos_async()
+    :ok = TDex.Wrapper.taos_close(conn)
+  end
+
+  @tag dev: true
+  test "select_no_tab", _context do
+    {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "tdex_test")
+    {:ok, {0, 1, {{~c"'e'", 8}}}, [{"e"}]} = TDex.Wrapper.taos_query(conn, "SELECT 'ẽ'")
+    :ok = TDex.Wrapper.taos_close(conn)
+  end
+
   test "sync_api", _context do
     {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "tdex_test")
     {:ok, {0, 0, {}}, []} = TDex.Wrapper.taos_query(conn, "DROP TABLE IF EXISTS test1")

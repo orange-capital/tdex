@@ -7,7 +7,7 @@ defmodule TDex.Query do
     name: iodata,
     statement: iodata,
     cache: TDex.Wrapper.stmt_t,
-    spec: [{atom, atom, non_neg_integer}],
+    spec: [{atom, atom | tuple}],
     mode: :stmt | :query,
     async: bool
   }

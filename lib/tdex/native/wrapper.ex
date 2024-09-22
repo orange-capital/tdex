@@ -10,6 +10,7 @@ defmodule TDex.Wrapper do
   @opaque conn_t :: any | none
   @opaque stmt_t :: any | none
   @opaque query_resp_t :: any | none
+  @max_taos_sql_len 1048576
 
   def load_nifs() do
     path = :filename.join(:code.priv_dir(:tdex), ~C"lib_taos_nif")
@@ -74,7 +75,12 @@ defmodule TDex.Wrapper do
 
   @spec taos_query(conn :: conn_t, sql :: String.t()) :: {:ok, tuple} | {:error, term}
   def taos_query(conn, sql) do
-    taos_query_nif(conn, nif_string(sql))
+    nif_sql = nif_string(sql)
+    if byte_size(nif_sql) < @max_taos_sql_len do
+      taos_query_nif(conn, nif_sql)
+    else
+      {:error, :sql_too_big}
+    end
   end
   def taos_query_nif(_conn, _sql) do
     raise "taos_query not implemented"
@@ -82,7 +88,12 @@ defmodule TDex.Wrapper do
 
   @spec taos_query_a(conn :: conn_t, sql :: String.t(), cb_pid :: pid, cb_id :: non_neg_integer) :: no_return
   def taos_query_a(conn, sql, cb_pid, cb_id) do
-    taos_query_a_nif(conn, nif_string(sql), cb_pid, cb_id)
+    nif_sql = nif_string(sql)
+    if byte_size(nif_sql) < @max_taos_sql_len do
+      taos_query_a_nif(conn, nif_sql, cb_pid, cb_id)
+    else
+      {:error, :sql_too_big}
+    end
   end
   def taos_query_a_nif(_conn, _sql, _cb_pid, _cb_id) do
     raise "taos_query_a not implemented"
@@ -95,7 +106,12 @@ defmodule TDex.Wrapper do
 
   @spec taos_stmt_prepare(conn ::conn_t, sql :: String.t()) :: {:ok, stmt_t} | {:error, term}
   def taos_stmt_prepare(conn, sql) do
-    taos_stmt_prepare_nif(conn, nif_string(sql))
+    nif_sql = nif_string(sql)
+    if byte_size(nif_sql) < @max_taos_sql_len do
+      taos_stmt_prepare_nif(conn, nif_sql)
+    else
+      {:error, :sql_too_big}
+    end
   end
   def taos_stmt_prepare_nif(_conn, _sql) do
     raise "taos_stmt_prepare not loaded"

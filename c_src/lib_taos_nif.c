@@ -279,9 +279,9 @@ static inline int parse_row_data(ErlNifEnv *env, ERL_NIF_TERM *row_data_array, i
             case TSDB_DATA_TYPE_BINARY:
             case TSDB_DATA_TYPE_NCHAR:
             case TSDB_DATA_TYPE_VARBINARY:
+            case TSDB_DATA_TYPE_GEOMETRY:
             case TSDB_DATA_TYPE_BLOB:
             case TSDB_DATA_TYPE_MEDIUMBLOB:
-            case TSDB_DATA_TYPE_GEOMETRY:
                 uint16_val = *((uint16_t*)((uint8_t*)row[i] - VARSTR_HEADER_SIZE));
                 if(!enif_alloc_binary(uint16_val, &bin)) {
                     return 0;
@@ -397,6 +397,9 @@ static inline int parse_taos_res_a(CB_DATA_T* cb_data, TAOS_RES* res, int number
     row_data = enif_make_list(cb_data->env, 0);
     for (int i = 0; i < number_of_row; i++) {
         TAOS_ROW row = taos_fetch_row(res);
+        if (row == NULL) {
+            break;
+        }
         ERL_NIF_TERM *data_array = enif_alloc(sizeof(ERL_NIF_TERM) * field_count);
         if (data_array == NULL) {
             return 0;

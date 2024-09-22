@@ -215,6 +215,10 @@ static inline int parse_row_data(ErlNifEnv *env, ERL_NIF_TERM *row_data_array, i
     double double_val = 0;
     ErlNifBinary bin;
     for(int i = 0; i < field_count; i++) {
+        if (fields[i].bytes == 0) {
+            row_data_array[i] = enif_make_atom(env, "nil");
+            continue;
+        }
         switch (fields[i].type) {
             case TSDB_DATA_TYPE_NULL:
                 row_data_array[i] = enif_make_atom(env, "nil");
@@ -344,6 +348,7 @@ static ERL_NIF_TERM taos_query_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     if (sql_query.size > MAX_SQL_SIZE) {
         return enif_make_tuple2(env, atom_error, atom_sql_too_big);
     }
+
     taos_result = taos_query(taos_obj->taos, (const char*)sql_query.data);
     error_code = taos_errno(taos_result);
     if (error_code != 0) {

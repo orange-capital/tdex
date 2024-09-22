@@ -30,7 +30,6 @@ typedef struct {
 
 typedef struct {
     uint32_t taos_type;
-    uint32_t taos_res_type;
     uint32_t taos_stmt_type;
 } resource_usage_t;
 

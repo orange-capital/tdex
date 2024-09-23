@@ -635,14 +635,18 @@ static ERL_NIF_TERM taos_stmt_execute_nif(ErlNifEnv *env, int argc, const ERL_NI
                     stmt_free_bind(bind_params, spec_size);
                     return enif_make_tuple2(env, atom_error, atom_invalid_data);
                 }
+                if (data_size != var_data_len_size) {
+                    stmt_free_bind(bind_params, spec_size);
+                    return enif_make_tuple2(env, atom_error, atom_invalid_data);
+                }
                 bind_params[i].buffer = cell_data.data;
-                bind_params[i].length = enif_alloc(data_size * sizeof(int32_t));
+                bind_params[i].length = enif_alloc(var_data_len_size * sizeof(int32_t));
                 if (bind_params[i].length == NULL) {
                     stmt_free_bind(bind_params, spec_size);
                     return enif_make_tuple2(env, atom_error, atom_oom);
                 }
                 for (int j = 0; j < var_data_len_size; j++) {
-                    if(!enif_get_int(env, var_data_len[i], &bind_params[i].length[j])) {
+                    if(!enif_get_int(env, var_data_len[j], &bind_params[i].length[j])) {
                         stmt_free_bind(bind_params, spec_size);
                         return enif_make_tuple2(env, atom_error, atom_invalid_data);
                     }

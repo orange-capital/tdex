@@ -84,12 +84,16 @@ defmodule TDex.DBConnection do
     end
   end
 
-  defp to_result(opts, {precision, affected_rows, names}, body) do
+  defp to_result(opts, specs, {precision, affected_rows, names}, body) do
     keys = Keyword.get(opts, :keys, :atoms)
-    key_names = if keys == :atoms do
-      Enum.map(Tuple.to_list(names), fn {name, _type} -> List.to_atom(name) end)
+    key_names = if specs != nil do
+      Enum.map(specs, fn {name, _type} -> name end)
     else
-      Enum.map(Tuple.to_list(names), fn {name, _type} -> :unicode.characters_to_binary(name) end)
+      if keys == :atoms do
+        Enum.map(Tuple.to_list(names), fn {name, _type} -> List.to_atom(name) end)
+      else
+        Enum.map(Tuple.to_list(names), fn {name, _type} -> :unicode.characters_to_binary(name) end)
+      end
     end
     rows = Enum.reduce(body, [], fn x, acc ->
       row = List.zip([key_names, Tuple.to_list(x)]) |> Map.new()
@@ -115,7 +119,7 @@ defmodule TDex.DBConnection do
    end
    case result do
      {:ok, header, body} ->
-       {:ok, query, to_result(opts, header, body), state}
+       {:ok, query, to_result(opts, query.spec, header, body), state}
      {:error, reason} ->
        TDex.Query.close(query)
        {:error, %TDex.Error{message: reason}, state}

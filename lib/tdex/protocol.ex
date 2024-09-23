@@ -102,7 +102,7 @@ defmodule TDex.DBConnection do
     %TDex.Result{
       precision: TDex.Wrapper.precision_to_unit(precision),
       affected_rows: affected_rows,
-      rows: Enum.reverse(rows)
+      rows: rows
     }
   end
 

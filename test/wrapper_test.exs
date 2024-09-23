@@ -61,7 +61,7 @@ defmodule WrapperTest do
   @tag dev: true
   test "select_no_tab", _context do
     {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "tdex_test")
-    {:ok, {0, 1, {{~c"'e'", 8}}}, [{"e"}]} = TDex.Wrapper.taos_query(conn, "SELECT 'ẽ'")
+    {:ok, {0, 1, {{~c"'ẽ'", 8}}}, [{"ẽ"}]} = TDex.Wrapper.taos_query(conn, "SELECT 'ẽ'")
     :ok = TDex.Wrapper.taos_close(conn)
   end
 

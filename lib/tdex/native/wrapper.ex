@@ -13,8 +13,20 @@ defmodule TDex.Wrapper do
   @max_taos_sql_len 1048576
 
   def load_nifs() do
-    path = :filename.join(:code.priv_dir(:tdex), ~C"lib_taos_nif")
+    path = :filename.join(:code.priv_dir(:tdex), ~C"taos_nif")
     :erlang.load_nif(path, @vsn)
+  end
+
+  def call_nif(_cb_pid, _cb_id, _conn, _stmt, _func_id, _func_args) do
+    raise "call_nif not implemented"
+  end
+
+  def start_nif(_num_worker) do
+    raise "start_nif not implemented"
+  end
+
+  def stop_nif() do
+    raise "stop_nif not implemented"
   end
 
   @spec taos_connect(ip :: String.t(), port :: non_neg_integer, user :: String.t(), passwd:: {:md5, String.t()} | String.t(), db :: String.t()) :: {:ok, conn_t} | {:error, term}

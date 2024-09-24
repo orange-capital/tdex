@@ -18,7 +18,12 @@ static ERL_NIF_TERM call_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]
     if (task == nullptr) {
         return enif_make_badarg(env);
     }
-    WorkerManager::instance()->dispatch(task);
+    if (WorkerManager::instance()->_worker_count == 0) {
+        return enif_make_tuple2(env, atom_error, enif_make_atom(env, "no_worker"));
+    }
+    if(!WorkerManager::instance()->dispatch(task)) {
+        return enif_make_tuple2(env, atom_error, enif_make_atom(env, "route_fail"));
+    }
     return atom_ok;
 }
 

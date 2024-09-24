@@ -10,9 +10,9 @@ defmodule TDex.Native.Async do
   ]
   @worker_size 8
 
-  def query(conn, sql, timeout \\ 10_000) do
+  def call(cmd, timeout \\ 10_000) do
     async_id = Skn.Counter.update_counter(:tdex_async_id, 1)
-    GenServer.call(worker_name(async_id), {:query, conn, sql, timeout}, 10_000)
+    GenServer.call(worker_name(async_id), {:call, cmd, timeout}, timeout + 200)
   catch
     _, exp ->
       {:error, exp}
@@ -24,11 +24,11 @@ defmodule TDex.Native.Async do
 
   def init(args) do
     reset_timer(:check_tick, :check_tick, 1000)
-    {:ok, %{id: args.id, queries: [], query_result: %{}, query_ptr: 0}}
+    {:ok, %{id: args.id, queries: [], query_data: %{}, query_ptr: 0}}
   end
 
-  def handle_call({:query, conn, sql, timeout}, from, %{queries: queries, query_ptr: query_ptr} = state) do
-    case TDex.Wrapper.taos_query_a(conn, sql, self(), query_ptr) do
+  def handle_call({:call, {conn, stmt, func, func_args}, timeout}, from, %{queries: queries, query_ptr: query_ptr} = state) do
+    case TDex.Wrapper.call_nif(self(), query_ptr, conn, stmt, func, func_args) do
       :ok ->
         ts_now = System.system_time(:millisecond)
         queries = List.keystore(queries, query_ptr, 0, {query_ptr, from, ts_now + timeout})
@@ -47,35 +47,41 @@ defmodule TDex.Native.Async do
     {:noreply, state}
   end
 
-  def handle_info({:taos_data, id, rows}, %{queries: queries, query_result: query_result} = state) do
+  def handle_info({:taos_data, id, rows}, %{queries: queries, query_data: query_data} = state) do
     case List.keyfind(queries, id, 0) do
       nil ->
         # drop
         {:noreply, state}
       {^id, _from, _timeout_at} ->
-        body = Map.get(query_result, id, []) ++ rows
-        {:noreply, %{state| query_result: Map.put(query_result, id, body)}}
+        body = Map.get(query_data, id, []) ++ rows
+        {:noreply, %{state| query_data: Map.put(query_data, id, body)}}
     end
   end
 
-  def handle_info({:taos_reply, id, result}, %{queries: queries, query_result: query_result} = state) do
+  def handle_info({:taos_reply, id, result}, %{queries: queries, query_data: query_data} = state) do
     reply = case result do
       {:error, reason} ->
         {:error, reason}
-      {:ok, header} ->
-        body = Map.get(query_result, id, [])
+      {:ok, header, nil} ->
+        body = Map.get(query_data, id, [])
         {:ok, header, body}
+      {:ok, header, body} ->
+        {:ok, header, body}
+      {:ok, header} ->
+        {:ok, header}
+      :ok ->
+        :ok
     end
     case List.keyfind(queries, id, 0) do
       nil ->
-        {:noreply, %{state| query_result: Map.delete(query_result, id)}}
+        {:noreply, %{state| query_data: Map.delete(query_data, id)}}
       {^id, from, _timeout_at} ->
         GenServer.reply(from, reply)
-        {:noreply, %{state| queries: List.keydelete(queries, id, 0), query_result: Map.delete(query_result, id)}}
+        {:noreply, %{state| queries: List.keydelete(queries, id, 0), query_data: Map.delete(query_data, id)}}
     end
   end
 
-  def handle_info(:check_tick, %{queries: queries, query_result: query_result} = state) do
+  def handle_info(:check_tick, %{queries: queries, query_data: query_data} = state) do
     reset_timer(:check_tick, :check_tick, 1000)
     ts_now = System.system_time(:millisecond)
     {queries, drop} = Enum.reduce(queries, {[], []}, fn {id, from, timeout_at}, {acc_queries, acc_drop} ->
@@ -86,7 +92,7 @@ defmodule TDex.Native.Async do
         {[{id, from, timeout_at}| acc_queries], acc_drop}
       end
     end)
-    {:noreply, %{state| queries: queries, query_result: Map.drop(query_result, drop)}}
+    {:noreply, %{state| queries: queries, query_data: Map.drop(query_data, drop)}}
   end
 
   def handle_info(msg, state) do

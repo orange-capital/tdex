@@ -183,9 +183,16 @@ struct binary: public ErlNifBinary
 {
 public:
     //binary(): needs_release(false) {}
-    explicit binary(size_t _size)
+    explicit binary(size_t _size): ErlNifBinary()
     {
         needs_release = enif_alloc_binary(_size, this);
+    }
+
+    explicit binary(const char* val): ErlNifBinary() {
+        needs_release = enif_alloc_binary(strlen(val), this);
+        if (needs_release) {
+            memcpy(this->data, val, this->size);
+        }
     }
 
 #ifdef NIFPP_INTRUSIVE_UNIT_TEST

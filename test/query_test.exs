@@ -57,7 +57,6 @@ defmodule QueryTest do
     assert {:ok, %TDex.Result{rows: [%{ts: ^ts1_ms, text: "hoang1"}]}} = TDex.query(context.pid, "SELECT * FROM test LIMIT 1", nil)
   end
 
-  @tag wip: true
   test "multi row result struct", context do
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "DROP TABLE IF EXISTS test1", nil)
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "CREATE TABLE IF NOT EXISTS test1 (ts TIMESTAMP, text VARCHAR(255))", [])

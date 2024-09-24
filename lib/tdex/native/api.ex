@@ -14,15 +14,19 @@ defmodule TDex.Native do
   end
 
   def query_a(conn, statement) do
-    TDex.Native.Async.query(conn, statement)
+    Wrapper.taos_query_a(conn, statement)
   end
 
   def prepare(conn, sql) do
     Wrapper.taos_stmt_prepare(conn, sql)
   end
 
-  def execute(stmt, spec, data) do
-    Wrapper.taos_stmt_execute(stmt, spec, data)
+  def execute(conn, stmt, spec, data) do
+    Wrapper.taos_stmt_execute({conn, stmt}, spec, data)
+  end
+
+  def close_stmt(conn, stmt) do
+    Wrapper.taos_stmt_free({conn, stmt})
   end
 
   def close(conn) do

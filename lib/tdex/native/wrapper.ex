@@ -7,14 +7,15 @@ defmodule TDex.Wrapper do
   @on_load {:load_nifs, 0}
   @vsn "0.1.0"
 
-  @opaque conn_t :: any | none
-  @opaque stmt_t :: any | none
+  @type conn_t :: integer
+  @type stmt_t :: integer
   @opaque query_resp_t :: any | none
   @max_taos_sql_len 1048576
 
   def load_nifs() do
     path = :filename.join(:code.priv_dir(:tdex), ~C"taos_nif")
     :erlang.load_nif(path, @vsn)
+    start_nif(2)
   end
 
   def call_nif(_cb_pid, _cb_id, _conn, _stmt, _func_id, _func_args) do
@@ -31,53 +32,46 @@ defmodule TDex.Wrapper do
 
   @spec taos_connect(ip :: String.t(), port :: non_neg_integer, user :: String.t(), passwd:: {:md5, String.t()} | String.t(), db :: String.t()) :: {:ok, conn_t} | {:error, term}
   def taos_connect(ip, port, user, passwd, db) do
-    case passwd do
+    func_args = case passwd do
       {:md5, hash} ->
-        taos_connect_nif(nif_string(ip), port, nif_string(user), nif_string(hash), 1, nif_string(db))
+        {nif_string(ip), port, nif_string(user), nif_string(hash), 1, nif_string(db)}
       _ ->
-        taos_connect_nif(nif_string(ip), port, nif_string(user), nif_string(passwd), 0, nif_string(db))
+        {nif_string(ip), port, nif_string(user), nif_string(passwd), 0, nif_string(db)}
     end
-  end
-
-  @spec taos_connect_nif(ip :: String.t(), port :: non_neg_integer, user :: String.t(), passwd :: String.t(), is_md5 :: integer, db :: String.t()) :: conn_t
-  def taos_connect_nif(_ip, _port, _user, _pass, _is_md5, _db) do
-    raise "taos_connect_nif not implemented"
+    TDex.Native.Async.call({-1, -1, func_value(:CONNECT), func_args})
   end
 
   @spec taos_close(conn :: conn_t) :: no_return
-  def taos_close(_conn) do
-    raise "taos_close not implemented"
+  def taos_close(conn) do
+    TDex.Native.Async.call({conn, -1, func_value(:CLOSE), nil})
   end
 
-  @spec taos_options(op :: 0..3, value :: String.t()) :: no_return
+  @spec taos_options(op :: atom(), value :: String.t()) :: :ok | {:error, term}
   def taos_options(op, value) do
-    taos_options_nif(op, nif_string(value))
-  end
-  def taos_options_nif(_op, _value) do
-    raise "taos_options not implemented"
+    func_args = {option_value(op), nif_string(value)}
+    TDex.Native.Async.call({-1, -1, func_value(:OPTION), func_args})
   end
 
-  @spec taos_select_db(conn :: conn_t, db :: String.t()) :: no_return
+  @spec taos_select_db(conn :: conn_t, db :: String.t()) :: :ok | {:error, term}
   def taos_select_db(conn, db) do
-    taos_select_db_nif(conn, nif_string(db))
-  end
-  def taos_select_db_nif(_conn, _db) do
-    raise "taos_select_db not implemented"
+    TDex.Native.Async.call({conn, -1, func_value(:SELECT_DB), nif_string(db)})
   end
 
-  @spec taos_get_current_db(conn :: conn_t) :: String.t()
-  def taos_get_current_db(_conn) do
-    raise "taos_get_current_db not implemented"
+  @spec taos_get_current_db(conn :: conn_t) :: {:ok, String.t()} | {:error, term}
+  def taos_get_current_db(conn) do
+    TDex.Native.Async.call({conn, -1, func_value(:GET_CURRENT_DB), nil})
   end
 
   @spec taos_get_server_info(conn :: conn_t) :: String.t()
-  def taos_get_server_info(_conn) do
-    raise "taos_get_server_info not implemented"
+  def taos_get_server_info(conn) do
+    {:ok, info} = TDex.Native.Async.call({conn, -1, func_value(:GET_SERVER_INFO), nil})
+    info
   end
 
   @spec taos_get_client_info() :: String.t()
   def taos_get_client_info() do
-    raise "taos_get_client_info not implemented"
+    {:ok, info} = TDex.Native.Async.call({-1, -1, func_value(:GET_CLIENT_INFO), nil})
+    info
   end
 
   @spec taos_query_free(resp :: query_resp_t) :: no_return
@@ -85,56 +79,45 @@ defmodule TDex.Wrapper do
     raise "taos_query_free not implemented"
   end
 
-  @spec taos_query(conn :: conn_t, sql :: String.t()) :: {:ok, tuple} | {:error, term}
+  @spec taos_query(conn :: conn_t, sql :: String.t()) :: {:ok, tuple, list} | {:error, term}
   def taos_query(conn, sql) do
     nif_sql = nif_string(sql)
     if byte_size(nif_sql) < @max_taos_sql_len do
-      taos_query_nif(conn, nif_sql)
+      TDex.Native.Async.call({conn, -1, func_value(:QUERY), nif_sql})
     else
       {:error, :sql_too_big}
     end
   end
-  def taos_query_nif(_conn, _sql) do
-    raise "taos_query not implemented"
-  end
 
-  @spec taos_query_a(conn :: conn_t, sql :: String.t(), cb_pid :: pid, cb_id :: non_neg_integer) :: no_return
-  def taos_query_a(conn, sql, cb_pid, cb_id) do
+  @spec taos_query_a(conn :: conn_t, sql :: String.t()) :: {:ok, tuple, list} | {:error, term}
+  def taos_query_a(conn, sql) do
     nif_sql = nif_string(sql)
     if byte_size(nif_sql) < @max_taos_sql_len do
-      taos_query_a_nif(conn, nif_sql, cb_pid, cb_id)
+      TDex.Native.Async.call({conn, -1, func_value(:QUERY_A), nif_sql})
     else
       {:error, :sql_too_big}
     end
   end
-  def taos_query_a_nif(_conn, _sql, _cb_pid, _cb_id) do
-    raise "taos_query_a not implemented"
-  end
 
-  @spec taos_stmt_free(stmt :: stmt_t) :: no_return
-  def taos_stmt_free(_stmt) do
-    raise "taos_stmt_free not loaded"
+  @spec taos_stmt_free({conn_t, stmt_t}) :: :ok | {:error, term}
+  def taos_stmt_free({conn, stmt}) do
+    TDex.Native.Async.call({conn, stmt, func_value(:STMT_CLOSE), nil})
   end
 
   @spec taos_stmt_prepare(conn ::conn_t, sql :: String.t()) :: {:ok, stmt_t} | {:error, term}
   def taos_stmt_prepare(conn, sql) do
     nif_sql = nif_string(sql)
     if byte_size(nif_sql) < @max_taos_sql_len do
-      taos_stmt_prepare_nif(conn, nif_sql)
+      TDex.Native.Async.call({conn, -1, func_value(:STMT_PREPARE), nif_sql})
     else
       {:error, :sql_too_big}
     end
   end
-  def taos_stmt_prepare_nif(_conn, _sql) do
-    raise "taos_stmt_prepare not loaded"
-  end
 
-  @spec taos_stmt_execute(stmt :: stmt_t, data_spec :: tuple, data :: tuple) :: {:ok, tuple, list} | {:error, term}
-  def taos_stmt_execute(stmt, spec, data) do
-    taos_stmt_execute_nif(stmt, stmt_format_spec(spec), stmt_format_data(spec, data), length(data))
-  end
-  def taos_stmt_execute_nif(_stmt, _spec, _data, _data_size) do
-    raise "taos_stmt_execute_nif not loaded"
+  @spec taos_stmt_execute({conn_t, stmt_t}, spec :: list, data :: list) :: {:ok, tuple, list} | {:error, term}
+  def taos_stmt_execute({conn, stmt}, spec, data) do
+    func_args = {stmt_format_spec(spec), stmt_format_data(spec, data), length(data)}
+    TDex.Native.Async.call({conn, stmt, func_value(:STMT_EXECUTE), func_args})
   end
 
   def stmt_format_spec(specs) do
@@ -230,6 +213,26 @@ defmodule TDex.Wrapper do
   end)
   Enum.each(@option_value_map, fn {name, value} ->
     def option_name(unquote(value)), do: unquote(name)
+  end)
+
+  @func_value_map [
+    :CONNECT,
+    :CLOSE,
+    :OPTION,
+    :GET_SERVER_INFO,
+    :GET_CLIENT_INFO,
+    :GET_CURRENT_DB,
+    :SELECT_DB,
+    :OPTIONS,
+    :QUERY,
+    :QUERY_A,
+    :STMT_PREPARE,
+    :STMT_EXECUTE,
+    :STMT_CLOSE,
+    :FUNC_MAX
+  ]
+  Enum.each(Enum.with_index(@func_value_map), fn {name, value} ->
+    def func_value(unquote(name)), do: unquote(value)
   end)
 
   @data_type_map [

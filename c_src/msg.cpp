@@ -38,6 +38,8 @@ ErlTask *ErlTask::create(ErlNifEnv* env, const ERL_NIF_TERM *argv) {
             case TAOS_FUNC::STMT_PREPARE:
                 args = TaskQueryArgs::parse(env, argv[5]);
                 break;
+            case TAOS_FUNC::STMT_EXECUTE:
+                args = TaskExecuteArgs::parse(env, argv[5]);
             default:
                 break;
         }
@@ -51,6 +53,7 @@ ErlTask::~ErlTask() {
     if (this->args != nullptr) {
         TaskConnectArgs* connect = nullptr;
         TaskQueryArgs* query = nullptr;
+        TaskExecuteArgs* exec = nullptr;
         switch (this->func) {
             case TAOS_FUNC::CONNECT:
                 connect = static_cast<TaskConnectArgs *>(this->args);
@@ -62,6 +65,10 @@ ErlTask::~ErlTask() {
             case TAOS_FUNC::STMT_PREPARE:
                 query = static_cast<TaskQueryArgs *>(this->args);
                 delete query;
+                break;
+            case TAOS_FUNC::STMT_EXECUTE:
+                exec = static_cast<TaskExecuteArgs *>(this->args);
+                delete exec;
                 break;
             default:
                 break;
@@ -105,6 +112,33 @@ TaskQueryArgs *TaskQueryArgs::parse(ErlNifEnv *env, ERL_NIF_TERM raw) {
         std::string sql;
         nifpp::get_throws(env, raw, sql);
         return new TaskQueryArgs(sql);
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+TaskExecuteArgs::TaskExecuteArgs(int &_num_row, std::vector<int> &_types,
+                                 std::vector<std::tuple<int, std::vector<int32_t>, ErlNifBinary>>& _params) {
+    this->num_row = _num_row;
+    this->types = _types;
+    this->params = _params;
+//    printf("num_row = %d\n", num_row);
+//    printf("type = ");
+//    for(auto it: types) {
+//        printf("%d ", it);
+//    }
+//    printf("\n");
+//    printf("params = ");
+//    printf("element size = %d", std::get<0>(params[0]));
+//    printf("len size = %zu", std::get<1>(params[0]).size());
+//    printf("\n");
+}
+
+TaskExecuteArgs *TaskExecuteArgs::parse(ErlNifEnv *env, ERL_NIF_TERM raw) {
+    try {
+        std::tuple<int, std::vector<int>, std::vector<std::tuple<int, std::vector<int32_t>, ErlNifBinary>>> args_tup;
+        nifpp::get_throws(env, raw, args_tup);
+        return new TaskExecuteArgs(std::get<0>(args_tup), std::get<1>(args_tup), std::get<2>(args_tup));
     } catch (...) {
         return nullptr;
     }

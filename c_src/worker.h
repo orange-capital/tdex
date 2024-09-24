@@ -59,6 +59,12 @@ public:
     void taos_query(ErlTask *pTask);
 
     void taos_query_res(ErlTask *pTask, TAOS_RES *res);
+
+    void taos_stmt_close(ErlTask *pTask);
+
+    void taos_stmt_prepare(ErlTask *pTask);
+
+    void taos_stmt_execute(ErlTask *pTask);
 };
 
 class WorkerManager {

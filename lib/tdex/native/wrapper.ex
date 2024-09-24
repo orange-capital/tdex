@@ -99,8 +99,8 @@ defmodule TDex.Wrapper do
     end
   end
 
-  @spec taos_stmt_free({conn_t, stmt_t}) :: :ok | {:error, term}
-  def taos_stmt_free({conn, stmt}) do
+  @spec taos_stmt_close({conn_t, stmt_t}) :: :ok | {:error, term}
+  def taos_stmt_close({conn, stmt}) do
     TDex.Native.Async.call({conn, stmt, func_value(:STMT_CLOSE), nil})
   end
 
@@ -116,7 +116,7 @@ defmodule TDex.Wrapper do
 
   @spec taos_stmt_execute({conn_t, stmt_t}, spec :: list, data :: list) :: {:ok, tuple, list} | {:error, term}
   def taos_stmt_execute({conn, stmt}, spec, data) do
-    func_args = {stmt_format_spec(spec), stmt_format_data(spec, data), length(data)}
+    func_args = {length(data), stmt_format_spec(spec), stmt_format_data(spec, data)}
     TDex.Native.Async.call({conn, stmt, func_value(:STMT_EXECUTE), func_args})
   end
 
@@ -124,27 +124,41 @@ defmodule TDex.Wrapper do
     Enum.map(specs, fn {_name, type} ->
       if is_atom(type), do: data_type_value(type), else: data_type_value(elem(type, 0))
     end)
-    |> List.to_tuple()
   end
 
   def stmt_format_data(specs, data) do
     Enum.map(specs, fn {row_name, row_type} ->
+      row_len_max = stmt_find_var_len_max(row_name, data)
+      row_type = fix_var_type(row_type, row_len_max)
       {acc_bin, acc_len} = stmt_format_data_by_type(row_name, row_type, data)
-      acc_len = Enum.reverse(acc_len) |> List.to_tuple()
+      acc_len = Enum.reverse(acc_len)
       case row_type do
         {_var_type, var_len} ->
           {var_len, acc_len, acc_bin}
         _ ->
-          acc_bin
+          {0, [], acc_bin}
       end
     end)
-    |> List.to_tuple()
+  end
+
+  defp fix_var_type(row_type, optimize_len) do
+    case row_type do
+      {var_type, var_len} -> {var_type, min(optimize_len, var_len)}
+      _ -> row_type
+    end
   end
 
   defp size_of_iodata(row_val) when is_binary(row_val), do: byte_size(row_val)
   defp size_of_iodata(row_val) when is_list(row_val), do: length(row_val)
   defp size_of_iodata(%TDex.Timestamp{}), do: 8
   defp size_of_iodata(_row_val), do: 8
+
+  defp stmt_find_var_len_max(row_name, data) do
+    Enum.reduce(data, 0, fn row, acc ->
+      row_val = Map.fetch!(row, row_name)
+      max(acc, size_of_iodata(row_val))
+    end)
+  end
 
   defp stmt_format_data_by_type(row_name, row_type, data) do
     Enum.reduce(data, {"", []}, fn row, {acc, acc_len} ->

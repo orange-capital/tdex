@@ -43,6 +43,15 @@ struct TaskQueryArgs {
     static TaskQueryArgs* parse(ErlNifEnv* env, ERL_NIF_TERM raw);
 };
 
+struct TaskExecuteArgs {
+    int num_row;
+    std::vector<int> types;
+    std::vector<std::tuple<int, std::vector<int>, ErlNifBinary>> params;
+    explicit TaskExecuteArgs(int& _num_row, std::vector<int>& _types,
+                             std::vector<std::tuple<int, std::vector<int32_t>, ErlNifBinary>>& _params);
+    static TaskExecuteArgs* parse(ErlNifEnv* env, ERL_NIF_TERM raw);
+};
+
 struct ErlTask {
 public:
     ErlNifPid cb_pid;

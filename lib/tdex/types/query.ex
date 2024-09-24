@@ -23,7 +23,7 @@ defmodule TDex.Query do
 
   def close(%__MODULE__{cache: cache}) do
     if cache != nil do
-      TDex.Wrapper.taos_stmt_free(cache)
+      TDex.Wrapper.taos_stmt_close(cache)
     end
   end
   def close(_), do: :ok

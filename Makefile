@@ -1,9 +1,8 @@
-CFLAGS = -O3 -Wall -Wno-format-truncation
+CXXFLAGS = --std=c++17
+CFLAGS = -g -Wall -Wno-format-truncation
 CFLAGS += -I/TDengine/include -I/usr/include
-CXXFLAGS = --std=c++17 -O3 -Wall -Wno-format-truncation
 ERLANG_PATH = $(shell erl -eval 'io:format("~s", [lists:concat([code:root_dir(), "/erts-", erlang:system_info(version), "/include"])])' -s init stop -noshell)
 CFLAGS += -I"$(ERLANG_PATH)" -Ic_src -fPIC
-CXXFLAGS += -I"$(ERLANG_PATH)" -Ic_src -fPIC
 LIB_NAME = priv/taos_nif.so
 LDFLAGS = -L/usr/lib -ltaos
 
@@ -14,7 +13,7 @@ all: $(LIB_NAME)
 
 $(LIB_NAME): $(NIF_SRC)
 	mkdir -p priv
-	$(CXX) $(CFLAGS) -shared $^ $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -shared $^ $(LDFLAGS) -o $@
 
 clean:
 	rm -f $(LIB_NAME)

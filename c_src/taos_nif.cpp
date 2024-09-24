@@ -12,11 +12,11 @@ static ERL_NIF_TERM atom_rt_error;
 
 static ERL_NIF_TERM call_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 6) {
-        return enif_make_badarg(env);
+        return enif_make_tuple2(env, atom_error, enif_make_atom(env, "invalid_arity"));
     }
     ErlTask* task = ErlTask::create(env, argv);
     if (task == nullptr) {
-        return enif_make_badarg(env);
+        return enif_make_tuple2(env, atom_error, enif_make_atom(env, "invalid_arg"));
     }
     if (WorkerManager::instance()->_worker_count == 0) {
         return enif_make_tuple2(env, atom_error, enif_make_atom(env, "no_worker"));
@@ -34,7 +34,7 @@ static ERL_NIF_TERM start_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[
     }
     int num_worker = 0;
     if (!enif_get_int(env, argv[0], &num_worker)) {
-        return enif_make_tuple2(env, atom_error, enif_make_atom(env, "badarg"));
+        return enif_make_tuple2(env, atom_error, enif_make_atom(env, "invalid_arg"));
     }
     if (WorkerManager::instance()->start(num_worker)) {
         return atom_ok;

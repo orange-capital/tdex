@@ -21,12 +21,12 @@ defmodule TDex.Query do
     :async
   ]
 
-  def close(%__MODULE__{cache: cache}) do
+  def close(%__MODULE__{cache: cache}, conn) do
     if cache != nil do
-      TDex.Wrapper.taos_stmt_close(cache)
+      TDex.Wrapper.taos_stmt_close({conn, cache})
     end
   end
-  def close(_), do: :ok
+  def close(_, _), do: :ok
 end
 
 defimpl DBConnection.Query, for: TDex.Query do

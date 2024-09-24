@@ -25,13 +25,13 @@ defmodule WrapperTest do
     {:error, "Authentication failure"} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata2", "tdex_test")
   end
 
+  @tag dev: true
   test "select_no_tab", _context do
     {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "tdex_test")
     {:ok, {0, 1, [{~c"'ẽ'", 8}]}, [["ẽ"]]} = TDex.Wrapper.taos_query(conn, "SELECT 'ẽ'")
     :ok = TDex.Wrapper.taos_close(conn)
   end
 
-  @tag wip: true
   test "sync_api", _context do
     {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "tdex_test")
     {:ok, {0, 0, []}, []} = TDex.Wrapper.taos_query(conn, "DROP TABLE IF EXISTS test1")

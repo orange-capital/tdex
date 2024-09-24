@@ -31,7 +31,7 @@ defmodule TDex do
   def query(conn, query, params, opts) do
     case DBConnection.prepare_execute(conn, query, params, opts) do
       {:ok, query, result} ->
-        TDex.Query.close(query)
+        TDex.Query.close(query, conn)
         {:ok, result}
       {:error, reason} ->
         {:error, reason}

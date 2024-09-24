@@ -86,22 +86,24 @@ defmodule TDex.DBConnection do
 
   defp to_result(opts, specs, {precision, affected_rows, names}, body) do
     keys = Keyword.get(opts, :keys, :atoms)
-    key_names = if specs != nil do
-      Enum.map(specs, fn {name, _type} -> name end)
+    {key_names, columns} = if specs != nil do
+      {Enum.map(specs, fn {name, _type} -> name end), specs}
     else
-      if keys == :atoms do
-        Enum.map(Tuple.to_list(names), fn {name, _type} -> List.to_atom(name) end)
+      cols = if keys == :atoms do
+        Enum.map(names, fn {name, type} -> {List.to_atom(name), TDex.Wrapper.data_type_name(type)} end)
       else
-        Enum.map(Tuple.to_list(names), fn {name, _type} -> :unicode.characters_to_binary(name) end)
+        Enum.map(names, fn {name, type} -> {:unicode.characters_to_binary(name), TDex.Wrapper.data_type_name(type)} end)
       end
+      {Enum.map(cols, fn {name, _type} -> name end), cols}
     end
     rows = Enum.reduce(body, [], fn x, acc ->
-      row = List.zip([key_names, Tuple.to_list(x)]) |> Map.new()
+      row = List.zip([key_names, x]) |> Map.new()
       [row| acc]
-    end)
+    end) |> Enum.reverse()
     %TDex.Result{
       precision: TDex.Wrapper.precision_to_unit(precision),
       affected_rows: affected_rows,
+      columns: columns,
       rows: rows
     }
   end
@@ -109,7 +111,7 @@ defmodule TDex.DBConnection do
   @impl true
   def handle_execute(query, params, opts, %{protocol: protocol, protocol_state: protocol_state} = state) do
    result = if query.mode == :stmt do
-     protocol.execute(query.cache, query.spec, params)
+     protocol.execute(protocol_state, query.cache, query.spec, params)
    else
     if query.async == false do
       protocol.query(protocol_state, query.statement)
@@ -121,11 +123,11 @@ defmodule TDex.DBConnection do
      {:ok, header, body} ->
        {:ok, query, to_result(opts, query.spec, header, body), state}
      {:error, reason} ->
-       TDex.Query.close(query)
        {:error, %TDex.Error{message: reason}, state}
    end
   catch _, exp ->
-    TDex.Query.close(query)
+    Skn.Log.error("query exception: #{inspect __STACKTRACE__}")
+    protocol.close_stmt(protocol_state, query.cache)
     {:error, %TDex.Error{message: exp}, state}
   end
 
@@ -135,8 +137,8 @@ defmodule TDex.DBConnection do
   end
 
   @impl true
-  def handle_close(query, _opts, state) do
-    :ok = TDex.Query.close(query)
+  def handle_close(query, _opts, %{protocol_state: protocol_state} = state) do
+    :ok = TDex.Query.close(query, protocol_state)
     {:ok, nil, state}
   end
 end

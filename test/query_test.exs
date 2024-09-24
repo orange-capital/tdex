@@ -22,6 +22,7 @@ defmodule QueryTest do
     assert {:ok, %TDex.Result{rows: [%{"'\\001\\002\\003'" => "001002003"}]}} = TDex.query(context.pid, "SELECT '\\001\\002\\003'", nil, keys: :string)
   end
 
+  @tag wip: true
   test "placeholder query", context do
     assert {:ok, %TDex.Result{rows: [%{"1" => 1}]}} = TDex.query(context.pid, "SELECT ?", [%{"1" => 1}], spec: [{"1", :INT}])
   end

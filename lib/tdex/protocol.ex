@@ -84,7 +84,18 @@ defmodule TDex.DBConnection do
     end
   end
 
+  defp fix_timestamp_col(row, ts_unit, cols_map) do
+    Enum.map(row, fn {name, value} ->
+      case Map.get(cols_map, name) do
+        :TIMESTAMP -> {name, TDex.Timestamp.from_unix(value, ts_unit)}
+        {:TIMESTAMP, _unit} -> {name, TDex.Timestamp.from_unix(value, ts_unit)}
+        _ -> {name, value}
+      end
+    end)
+  end
+
   defp to_result(opts, specs, {precision, affected_rows, names}, body) do
+    ts_unit = TDex.Wrapper.precision_to_unit(precision)
     keys = Keyword.get(opts, :keys, :atoms)
     {key_names, columns} = if specs != nil do
       {Enum.map(specs, fn {name, _type} -> name end), specs}
@@ -96,12 +107,13 @@ defmodule TDex.DBConnection do
       end
       {Enum.map(cols, fn {name, _type} -> name end), cols}
     end
+    cols_map = Map.new(columns)
     rows = Enum.reduce(body, [], fn x, acc ->
-      row = List.zip([key_names, x]) |> Map.new()
+      row = List.zip([key_names, x]) |> fix_timestamp_col(ts_unit, cols_map) |> Map.new()
       [row| acc]
     end) |> Enum.reverse()
     %TDex.Result{
-      precision: TDex.Wrapper.precision_to_unit(precision),
+      precision: ts_unit,
       affected_rows: affected_rows,
       columns: columns,
       rows: rows

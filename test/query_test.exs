@@ -40,31 +40,27 @@ defmodule QueryTest do
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "CREATE TABLE IF NOT EXISTS test (ts TIMESTAMP, text VARCHAR(255))", nil)
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "SELECT * FROM test", nil)
     ts1 = ~X[2018-11-15 10:00:00.000Z]
-    ts1_ms = TDex.Timestamp.to_unix(ts1, :millisecond)
     params = [%{ts: ts1, text: "hoang"}]
     specs = [ts: :TIMESTAMP, text: {:VARCHAR, 255}]
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "INSERT INTO test VALUES (?, ?)", params, spec: specs)
-    assert {:ok, %TDex.Result{rows: [%{ts: ^ts1_ms, text: "hoang"}]}} = TDex.query(context.pid, "SELECT * FROM test LIMIT 1", nil)
+    assert {:ok, %TDex.Result{rows: [%{ts: ^ts1, text: "hoang"}]}} = TDex.query(context.pid, "SELECT * FROM test LIMIT 1", nil)
   end
 
   test "update", context do
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "DROP TABLE IF EXISTS test", nil)
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "CREATE TABLE IF NOT EXISTS test (ts TIMESTAMP, text VARCHAR(255))", nil)
     ts1 = ~X[2018-11-15 10:00:00.000Z]
-    ts1_ms = TDex.Timestamp.to_unix(ts1, :millisecond)
     params = [%{ts: ts1, text: "hoang1"}]
     specs = [ts: :TIMESTAMP, text: {:VARCHAR, 255}]
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "INSERT INTO test VALUES (?, ?)", params, spec: specs)
-    assert {:ok, %TDex.Result{rows: [%{ts: ^ts1_ms, text: "hoang1"}]}} = TDex.query(context.pid, "SELECT * FROM test LIMIT 1", nil)
+    assert {:ok, %TDex.Result{rows: [%{ts: ^ts1, text: "hoang1"}]}} = TDex.query(context.pid, "SELECT * FROM test LIMIT 1", nil)
   end
 
   test "multi row result struct", context do
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "DROP TABLE IF EXISTS test1", nil)
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "CREATE TABLE IF NOT EXISTS test1 (ts TIMESTAMP, text VARCHAR(255))", [])
     ts1 = ~X[2018-11-15 10:00:00.000Z]
-    ts1_ms = TDex.Timestamp.to_unix(ts1, :millisecond)
     ts2 = ~X[2018-11-16 10:00:00.000Z]
-    ts2_ms = TDex.Timestamp.to_unix(ts2, :millisecond)
     params = [
       %{ts: ts1, text: "hoang1"},
       %{ts: ts2, text: "hoang2"},
@@ -72,8 +68,8 @@ defmodule QueryTest do
     specs = [ts: :TIMESTAMP, text: {:VARCHAR, 255}]
     assert {:ok, %TDex.Result{rows: []}} = TDex.query(context.pid, "INSERT INTO test1 VALUES (?, ?)", params, spec: specs)
     assert {:ok, %TDex.Result{rows: [
-      %{text: "hoang1", ts: ^ts1_ms},
-      %{text: "hoang2", ts: ^ts2_ms}
+      %{text: "hoang1", ts: ^ts1},
+      %{text: "hoang2", ts: ^ts2}
     ]}} = TDex.query(context.pid, "SELECT * FROM test1 ORDER BY ts", nil)
   end
 end

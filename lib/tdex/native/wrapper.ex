@@ -31,14 +31,14 @@ defmodule TDex.Wrapper do
   end
 
   @spec taos_connect(ip :: String.t(), port :: non_neg_integer, user :: String.t(), passwd:: {:md5, String.t()} | String.t(), db :: String.t()) :: {:ok, conn_t} | {:error, term}
-  def taos_connect(ip, port, user, passwd, db) do
+  def taos_connect(ip, port, user, passwd, db, opts \\ []) do
     func_args = case passwd do
       {:md5, hash} ->
         {nif_string(ip), port, nif_string(user), nif_string(hash), 1, nif_string(db)}
       _ ->
         {nif_string(ip), port, nif_string(user), nif_string(passwd), 0, nif_string(db)}
     end
-    TDex.Native.Async.call({-1, -1, func_value(:CONNECT), func_args})
+    TDex.Native.Async.call({-1, -1, func_value(:CONNECT), func_args}, Keyword.get(opts, :timeout, 10_000))
   end
 
   @spec taos_close(conn :: conn_t) :: no_return
@@ -80,10 +80,10 @@ defmodule TDex.Wrapper do
   end
 
   @spec taos_query(conn :: conn_t, sql :: String.t()) :: {:ok, tuple, list} | {:error, term}
-  def taos_query(conn, sql) do
+  def taos_query(conn, sql, opts \\ []) do
     nif_sql = nif_string(sql)
     if byte_size(nif_sql) < @max_taos_sql_len do
-      TDex.Native.Async.call({conn, -1, func_value(:QUERY), nif_sql})
+      TDex.Native.Async.call({conn, -1, func_value(:QUERY), nif_sql}, Keyword.get(opts, :timeout, 10_000))
     else
       {:error, :sql_too_big}
     end
@@ -115,9 +115,9 @@ defmodule TDex.Wrapper do
   end
 
   @spec taos_stmt_execute({conn_t, stmt_t}, spec :: list, data :: list) :: {:ok, tuple, list} | {:error, term}
-  def taos_stmt_execute({conn, stmt}, spec, data) do
+  def taos_stmt_execute({conn, stmt}, spec, data, opts \\ []) do
     func_args = {length(data), stmt_format_spec(spec), stmt_format_data(spec, data)}
-    TDex.Native.Async.call({conn, stmt, func_value(:STMT_EXECUTE), func_args})
+    TDex.Native.Async.call({conn, stmt, func_value(:STMT_EXECUTE), func_args}, Keyword.get(opts, :timeout, 10_000))
   end
 
   def stmt_format_spec(specs) do

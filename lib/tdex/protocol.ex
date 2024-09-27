@@ -15,7 +15,7 @@ defmodule TDex.DBConnection do
   def connect(opts) do
     params = Map.new(opts)
     compact_params = map_keep_keys(params, [:hostname, :port, :username, :password, :database, :timeout])
-    case params.protocol.connect(compact_params) do
+    case params.protocol.connect(compact_params, timeout: Map.get(params, :timeout, 10_000)) do
       {:ok, protocol_state} -> {:ok, %{params: compact_params, protocol: params.protocol, protocol_state: protocol_state}}
       {:error, reason} -> {:error, reason}
     end
@@ -110,21 +110,22 @@ defmodule TDex.DBConnection do
 
   @impl true
   def handle_execute(query, params, opts, %{protocol: protocol, protocol_state: protocol_state} = state) do
-   result = if query.mode == :stmt do
-     protocol.execute(protocol_state, query.cache, query.spec, params)
-   else
-    if query.async == false do
-      protocol.query(protocol_state, query.statement)
+    timeout = Keyword.get(opts, :timeout, 10_000)
+    result = if query.mode == :stmt do
+      protocol.execute(protocol_state, query.cache, query.spec, params, timeout: timeout)
     else
-      protocol.query_a(protocol_state, query.statement)
+      if query.async == false do
+        protocol.query(protocol_state, query.statement, timeout: timeout)
+      else
+        protocol.query_a(protocol_state, query.statement)
+      end
     end
-   end
-   case result do
-     {:ok, header, body} ->
-       {:ok, query, to_result(opts, query.spec, header, body), state}
-     {:error, reason} ->
-       {:error, %TDex.Error{message: reason}, state}
-   end
+    case result do
+      {:ok, header, body} ->
+        {:ok, query, to_result(opts, query.spec, header, body), state}
+      {:error, reason} ->
+        {:error, %TDex.Error{message: reason}, state}
+    end
   catch _, exp ->
     Skn.Log.error("query exception: #{inspect __STACKTRACE__}")
     protocol.close_stmt(protocol_state, query.cache)

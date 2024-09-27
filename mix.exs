@@ -9,6 +9,7 @@ defmodule TDex.MixProject do
       elixirc_paths: [:lib],
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
+      make_clean: ["clean"],
       deps: deps()
     ]
   end

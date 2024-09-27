@@ -1,5 +1,9 @@
 CXXFLAGS = --std=c++17
+ifeq ($(MIX_ENV), prod)
 CFLAGS = -O3 -Wall -Wno-format-truncation
+else
+CFLAGS = -g -Wall -Wno-format-truncation
+endif
 CFLAGS += -I/TDengine/include -I/usr/include
 ERLANG_PATH = $(shell erl -eval 'io:format("~s", [lists:concat([code:root_dir(), "/erts-", erlang:system_info(version), "/include"])])' -s init stop -noshell)
 CFLAGS += -I"$(ERLANG_PATH)" -Ic_src -fPIC

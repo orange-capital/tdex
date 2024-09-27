@@ -16,6 +16,7 @@ NIF_SRC=\
 all: $(LIB_NAME)
 
 $(LIB_NAME): $(NIF_SRC)
+	@echo "TDex building env $(MIX_ENV)"
 	mkdir -p priv
 	$(CXX) $(CXXFLAGS) $(CFLAGS) -shared $^ $(LDFLAGS) -o $@
 

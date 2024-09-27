@@ -24,11 +24,11 @@ defmodule TDex.Native.Async do
 
   def init(args) do
     reset_timer(:check_tick, :check_tick, 1000)
-    {:ok, %{id: args.id, queries: [], query_data: %{}, query_ptr: 0}}
+    {:ok, %{id: args.id, name: worker_name(args.id), queries: [], query_data: %{}, query_ptr: 0}}
   end
 
-  def handle_call({:call, {conn, stmt, func, func_args}, timeout}, from, %{queries: queries, query_ptr: query_ptr} = state) do
-    case TDex.Wrapper.call_nif(self(), query_ptr, conn, stmt, func, func_args) do
+  def handle_call({:call, {conn, stmt, func, func_args}, timeout}, from, %{name: name, queries: queries, query_ptr: query_ptr} = state) do
+    case TDex.Wrapper.call_nif(name, query_ptr, conn, stmt, func, func_args) do
       :ok ->
         ts_now = System.system_time(:millisecond)
         queries = List.keystore(queries, query_ptr, 0, {query_ptr, from, ts_now + timeout})

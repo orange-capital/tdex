@@ -46,7 +46,7 @@ struct TaskQueryArgs {
 struct TaskExecuteArgs {
     int num_row;
     std::vector<int> types;
-    std::vector<std::tuple<int, std::vector<int>, ErlNifBinary>> params;
+    std::vector<std::tuple<int, std::vector<int>, nifpp::vec_bin>> params;
     explicit TaskExecuteArgs(int& _num_row, std::vector<int>& _types,
                              std::vector<std::tuple<int, std::vector<int32_t>, ErlNifBinary>>& _params);
     static TaskExecuteArgs* parse(ErlNifEnv* env, ERL_NIF_TERM raw);
@@ -54,14 +54,14 @@ struct TaskExecuteArgs {
 
 struct ErlTask {
 public:
-    ErlNifPid cb_pid;
+    nifpp::str_atom cb_name;
     uint64_t cb_id;
     int conn;
     int stmt;
     TAOS_FUNC func;
     void* args;
 
-    explicit ErlTask(ErlNifPid cb_pid, uint64_t cb_id, int conn, int stmt, TAOS_FUNC func, void* args);
+    explicit ErlTask(nifpp::str_atom& cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args);
     ~ErlTask();
 
     static ErlTask* create(ErlNifEnv* env, const ERL_NIF_TERM* argv);

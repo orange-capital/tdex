@@ -3,7 +3,7 @@
 //
 #include "msg.h"
 
-ErlTask::ErlTask(ErlNifPid _cb_pid, uint64_t cb_id, int conn, int stmt, TAOS_FUNC func, void* args): cb_pid(_cb_pid) {
+ErlTask::ErlTask(nifpp::str_atom& _cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args): cb_name(_cb_pid) {
     this->cb_id = cb_id;
     this->conn = conn;
     this->stmt = stmt;
@@ -13,7 +13,7 @@ ErlTask::ErlTask(ErlNifPid _cb_pid, uint64_t cb_id, int conn, int stmt, TAOS_FUN
 
 ErlTask *ErlTask::create(ErlNifEnv* env, const ERL_NIF_TERM *argv) {
     try {
-        ErlNifPid cb_pid;
+        nifpp::str_atom cb_pid;
         uint64_t cb_id;
         int conn, stmt, func, func_min, func_max;
         nifpp::get_throws(env, argv[0], cb_pid);
@@ -121,7 +121,13 @@ TaskExecuteArgs::TaskExecuteArgs(int &_num_row, std::vector<int> &_types,
                                  std::vector<std::tuple<int, std::vector<int32_t>, ErlNifBinary>>& _params) {
     this->num_row = _num_row;
     this->types = _types;
-    this->params = _params;
+    this->params.clear();
+    for(auto it: _params) {
+        auto t1 = std::get<0>(it);
+        auto t2 = std::get<1>(it);
+        nifpp::vec_bin t3(std::get<2>(it));
+        this->params.emplace_back(std::tie(t1, t2, t3));
+    }
 //    printf("num_row = %d\n", num_row);
 //    printf("type = ");
 //    for(auto it: types) {

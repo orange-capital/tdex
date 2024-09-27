@@ -96,7 +96,6 @@ Worker::Worker(int id) : _is_stop(true), _tid(nullptr), _env(nullptr) {
 
 Worker::~Worker() {
     this->stop();
-    enif_free_env(_env);
     // release pending task
     _queue_mut.lock();
     ErlTask* task;
@@ -118,6 +117,10 @@ Worker::~Worker() {
     }
     _taos_stmt.clear();
     _taos_conn.clear();
+    // free env
+    _env_mut.lock();
+    enif_free_env(_env);
+    _env_mut.unlock();
 }
 
 void* worker_run(void* args) {
@@ -217,7 +220,11 @@ int Worker::process_batch() {
 
 inline void Worker::reply(ErlTask* task, nifpp::TERM term) {
     std::tuple<nifpp::str_atom, uint64_t, nifpp::TERM> reply_tup = std::tie("taos_reply", task->cb_id, term);
-    enif_send(nullptr, &task->cb_pid, _env, nifpp::make(_env, reply_tup));
+    nifpp::TERM cb_name = nifpp::make(_env, task->cb_name);
+    ErlNifPid cb_pid;
+    if (enif_whereis_pid(nullptr, cb_name, &cb_pid)) {
+        enif_send(nullptr, &cb_pid, _env, nifpp::make(_env, reply_tup));
+    }
 }
 
 inline void Worker::reply_error(ErlTask *task, const char *reason) {
@@ -227,7 +234,7 @@ inline void Worker::reply_error(ErlTask *task, const char *reason) {
 
 inline void Worker::reply_error_str(ErlTask *pTask, const char *message) {
     nifpp::atom error(_env, "error");
-    nifpp::binary reason(message);
+    nifpp::str_bin reason(message);
     auto error_tup = std::tie(error, reason);
     this->reply(pTask, nifpp::make(this->_env, error_tup));
 }
@@ -278,7 +285,7 @@ void Worker::taos_get_server_info(ErlTask *task) {
     if (it != _taos_conn.end()) {
         const char* server_info = ::taos_get_server_info(it->second);
         nifpp::str_atom atom_ok("ok");
-        nifpp::binary server_bin(server_info);
+        nifpp::str_bin server_bin(server_info);
         auto ok_tup = std::tie(atom_ok, server_bin);
         this->reply(task, nifpp::make(_env, ok_tup));
     } else {
@@ -289,7 +296,7 @@ void Worker::taos_get_server_info(ErlTask *task) {
 void Worker::taos_get_client_info(ErlTask *task) {
     const char* client_info = ::taos_get_client_info();
     nifpp::str_atom atom_ok("ok");
-    nifpp::binary client_bin(client_info);
+    nifpp::str_bin client_bin(client_info);
     auto ok_tup = std::tie(atom_ok, client_bin);
     this->reply(task, nifpp::make(_env, ok_tup));
 }
@@ -305,7 +312,7 @@ void Worker::taos_get_current_db(ErlTask *pTask) {
             return;
         }
         nifpp::str_atom atom_ok("ok");
-        nifpp::binary db_name_bin(db_name);
+        nifpp::str_bin db_name_bin(db_name);
         auto ok_tup = std::tie(atom_ok, db_name_bin);
         this->reply(pTask, nifpp::make(_env, ok_tup));
     } else {
@@ -529,7 +536,7 @@ void Worker::taos_stmt_execute(ErlTask *pTask) {
                 bind_params[i].buffer = nullptr;
             } else {
                 bind_params[i].is_null = nullptr;
-                bind_params[i].buffer = std::get<2>(args->params[i]).data;
+                bind_params[i].buffer = std::get<2>(args->params[i]).data();
             }
             switch (args->types[i]) {
                 case TSDB_DATA_TYPE_NULL:

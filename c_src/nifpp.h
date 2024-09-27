@@ -56,7 +56,9 @@
 namespace nifpp
 {
 
-class badarg{};
+class badarg: public std::exception
+{
+};
 
 struct TERM
 {
@@ -77,6 +79,25 @@ struct TERM
 
 static_assert(sizeof(TERM)==sizeof(ERL_NIF_TERM), "TERM size does not match ERL_NIF_TERM");
 
+class vec_bin: public std::vector<uint8_t>
+{
+public:
+    template<class ... Args>
+    vec_bin(Args&& ... args) : std::vector<uint8_t>(args...) { }
+    explicit vec_bin(ErlNifBinary& bin) {
+        for(size_t i = 0; i < bin.size; i++) {
+            this->push_back(bin.data[i]);
+        }
+    }
+};
+
+class str_bin: public std::string
+{
+public:
+    template<class ... Args>
+    str_bin(Args&& ... args) : std::string(args...) { }
+};
+
 class str_atom: public std::string
 {
 public:
@@ -85,7 +106,7 @@ public:
 };
 
 
-class atom 
+class atom
 {
 public:
     atom() : val(0) {}
@@ -160,6 +181,14 @@ template<> struct hash<nifpp::str_atom>
   {
       return hash<std::string>()(k);
   }
+};
+
+template<> struct hash<nifpp::str_bin>
+{
+    std::size_t operator()(const nifpp::str_bin& k) const
+    {
+        return hash<std::string>()(k);
+    }
 };
 
 template<> struct hash<nifpp::atom>
@@ -451,6 +480,28 @@ inline bool get(ErlNifEnv *env, ERL_NIF_TERM term, ErlNifBinary &var)
 {
     return enif_inspect_binary(env, term, &var);
 }
+inline bool get(ErlNifEnv *env, ERL_NIF_TERM term, str_bin &var)
+{
+    ErlNifBinary bin;
+    if(!enif_inspect_binary(env, term, &bin)) {
+        return false;
+    }
+    for(size_t i = 0; i < bin.size; i++) {
+        var.push_back((char)bin.data[i]);
+    }
+    return true;
+}
+inline bool get(ErlNifEnv *env, ERL_NIF_TERM term, vec_bin &var)
+{
+    ErlNifBinary bin;
+    if(!enif_inspect_binary(env, term, &bin)) {
+        return false;
+    }
+    for(size_t i = 0; i < bin.size; i++) {
+        var.push_back(bin.data[i]);
+    }
+    return true;
+}
 inline TERM make(ErlNifEnv *env, ErlNifBinary &var)
 {
     return TERM(enif_make_binary(env, &var));
@@ -460,7 +511,20 @@ inline TERM make(ErlNifEnv *env, binary &var)
     var.needs_release = false;
     return TERM(enif_make_binary(env, &var));
 }
-
+inline TERM make(ErlNifEnv *env, str_bin &var)
+{
+    ErlNifBinary bin;
+    enif_alloc_binary(var.size(), &bin);
+    memcpy(bin.data, var.c_str(), bin.size);
+    return TERM(enif_make_binary(env, &bin));
+}
+inline TERM make(ErlNifEnv *env, vec_bin &var)
+{
+    ErlNifBinary bin;
+    enif_alloc_binary(var.size(), &bin);
+    memcpy(bin.data, var.data(), bin.size);
+    return TERM(enif_make_binary(env, &bin));
+}
 
 // ErlNifPid
 

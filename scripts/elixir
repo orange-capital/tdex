@@ -253,6 +253,6 @@ fi
 if [ -n "$ELIXIR_CLI_DRY_RUN" ]; then
   echo "$@"
 else
-  echo "exec $@"
+#  echo "exec $@"
   exec "$@"
 fi

@@ -2,6 +2,7 @@
 import os
 import hashlib
 import shutil
+import stat
 
 
 def md5sum(filename: str) -> str:
@@ -21,16 +22,16 @@ def run_patch():
     os.makedirs(f'{erl_top}/scripts', exist_ok=True)
     valgrind_md5 = md5sum(os.path.join(c_dir, 'valgrind_beamasm_update.escript'))
     target_valgrind_script = os.path.join(f'{erl_top}/scripts', 'valgrind_beamasm_update.escript')
-    if os.path.exists(target_valgrind_script) == False or md5sum(target_valgrind_script) != valgrind_md5:
+    if os.path.exists(target_valgrind_script) is False or md5sum(target_valgrind_script) != valgrind_md5:
         print('patch valgrind_beamasm_update.escript ->', target_valgrind_script)
         shutil.copy2(os.path.join(c_dir, 'valgrind_beamasm_update.escript'), target_valgrind_script)
-        os.chmod(target_valgrind_script, os.stat(target_valgrind_script).st_mode | os.X_OK)
+        os.chmod(target_valgrind_script, 0o775, follow_symlinks=True)
     elixir_md5 = md5sum(os.path.join(c_dir, 'elixir'))
     target_elixir_script = shutil.which('elixir')
     if md5sum(target_elixir_script) != elixir_md5:
         print('patch elixir ->', target_elixir_script)
         shutil.copy2(os.path.join(c_dir, 'elixir'), target_elixir_script)
-        os.chmod(target_elixir_script, os.stat(target_elixir_script).st_mode | os.X_OK)
+        os.chmod(target_elixir_script, 0o775, follow_symlinks=True)
 
 
 if __name__ == '__main__':

@@ -139,13 +139,8 @@ int Worker::start() {
 }
 
 void Worker::run() {
-    int task_count = 0;
     while (!this->_is_stop) {
-        task_count = this->process_batch();
-        if (task_count > 0) {
-            // clear env nif
-            enif_clear_env(_env);
-        }
+        this->process_batch();
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 }
@@ -211,6 +206,7 @@ int Worker::process_batch() {
         _queue_mut.unlock();
         this->process(task);
         delete task;
+        enif_clear_env(_env);
         ret++;
     }
     return ret;

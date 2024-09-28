@@ -8,7 +8,18 @@ Documentation:
 - [Install Client Driver](https://docs.tdengine.com/reference/connector/#Install-Client-Driver)
 
 ## Dev
++ Valgrind with Wrap
+```elixir
+    {:ok, conn} = TDex.Wrapper.taos_connect("127.0.0.1", 6030, "root", "taosdata", "ticks")
+    sql = "CREATE STABLE IF NOT EXISTS fx_tick (ts TIMESTAMP, ts_recv TIMESTAMP, ts_update TIMESTAMP, bid FLOAT, ask FLOAT, `last` FLOAT, bid_volume FLOAT, ask_volume FLOAT, flag UTINYINT) TAGS (symbol VARCHAR(16)}, broker_id UINT)"
+    TDex.Wrapper.taos_query(conn, sql)
+    
+    :ok = TDex.Wrapper.taos_close(conn)
+    :init.stop()
+```
 
+
++ Valgrind with DbConnection
 ```elixir
   opts = [database: "ticks", backoff_type: :stop, max_restarts: 0, protocol: :native, pool_size: 4]
   {:ok, pid} = TDex.start_link(opts)

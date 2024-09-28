@@ -10,6 +10,10 @@ defmodule TDex do
     Supervisor.start_link(children, strategy: :one_for_one)
   end
 
+  def stop(_state) do
+    TDex.Wrapper.stop_nif()
+  end
+
   def start_link() do
     opts = Application.get_env(:tdex, TDex.Repo) |> default_opts()
     DBConnection.start_link(TDex.DBConnection, opts)

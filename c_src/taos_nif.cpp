@@ -45,6 +45,8 @@ static ERL_NIF_TERM start_nif(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[
 
 static ERL_NIF_TERM stop_nif([[maybe_unused]] ErlNifEnv *env, [[maybe_unused]] int argc, [[maybe_unused]] const ERL_NIF_TERM argv[]) {
     WorkerManager::instance()->stop();
+    WorkerManager::dispose();
+    taos_cleanup();
     return atom_ok;
 }
 
@@ -59,19 +61,11 @@ static int init_nif(ErlNifEnv *env, [[maybe_unused]] void **priv_data, [[maybe_u
     return 0;
 }
 
-static void destroy_nif([[maybe_unused]] ErlNifEnv *env, void *priv_data) {
-    if (priv_data) {
-        enif_free(priv_data);
-    }
-    WorkerManager::dispose();
-    taos_cleanup();
-}
-
 static ErlNifFunc nif_funcs[] = {
         {"call_nif", 6, call_nif, 0},
         {"start_nif",                  1, start_nif, 0},
         {"stop_nif", 0, stop_nif, 0},
 };
 
-ERL_NIF_INIT(Elixir.TDex.Wrapper, nif_funcs, init_nif, nullptr, nullptr, destroy_nif)
+ERL_NIF_INIT(Elixir.TDex.Wrapper, nif_funcs, init_nif, nullptr, nullptr, nullptr)
 }

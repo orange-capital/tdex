@@ -350,9 +350,11 @@ void Worker::taos_query(ErlTask *pTask) {
         TAOS_RES* res = ::taos_query(it->second, args->sql.c_str());
         if (taos_errno(res) != 0) {
             this->reply_error_str(pTask, ::taos_errstr(res));
+            ::taos_free_result(res);
             return;
         }
         this->taos_query_res(pTask, res);
+        ::taos_free_result(res);
     } else {
         this->reply_error(pTask, "invalid_conn");
     }
@@ -370,7 +372,6 @@ void Worker::taos_query_res(ErlTask *pTask, TAOS_RES *res) {
     TAOS_ROW  row = nullptr;
     std::vector<nifpp::TERM> header, body;
     if (fields == nullptr && field_count > 0) {
-        ::taos_free_result(res);
         this->reply_error_str(pTask, "taos_fetch_fields -> NULL");
         return;
     }
@@ -584,9 +585,11 @@ void Worker::taos_stmt_execute(ErlTask *pTask) {
         ret_code = taos_errno(res);
         if (ret_code != 0) {
             this->reply_error_str(pTask, ::taos_errstr(res));
+            ::taos_free_result(res);
             return;
         }
         this->taos_query_res(pTask, res);
+        ::taos_free_result(res);
     } else {
         this->reply_error(pTask, "invalid_stmt");
     }

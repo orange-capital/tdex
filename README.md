@@ -10,12 +10,12 @@ Documentation:
 ## Dev
 
 ```elixir
-  {:ok, conn} = TDex.Wrapper.taos_connect "localhost", 6030, "root", "taosdata", "tdex_test"
-  TDex.Wrapper.taos_get_current_db(conn)
-  TDex.Wrapper.taos_query conn, "CREATE DATABASE IF NOT EXISTS test2"
-  TDex.Wrapper.taos_select_db conn, "test2"
-  TDex.Wrapper.taos_get_current_db(conn)
-  TDex.Wrapper.taos_select_db conn, "tdex_test"
+  opts = [database: "ticks", backoff_type: :stop, max_restarts: 0, protocol: :native, pool_size: 4]
+  {:ok, pid} = TDex.start_link(opts)
+  sql = "CREATE STABLE IF NOT EXISTS fx_tick (ts TIMESTAMP, ts_recv TIMESTAMP, ts_update TIMESTAMP, bid FLOAT, ask FLOAT, `last` FLOAT, bid_volume FLOAT, ask_volume FLOAT, flag UTINYINT) TAGS (symbol VARCHAR(16)}, broker_id UINT)"
+  TDex.query(pid, sql, nil)
+
+  :init.stop()
 ```
 
 ## Examples

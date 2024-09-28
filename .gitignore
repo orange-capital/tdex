@@ -32,3 +32,5 @@ libtaos.so.3.1.1.0
 priv/*
 
 /.idea
+
+/beam.valgrind.*

@@ -54,14 +54,14 @@ struct TaskExecuteArgs {
 
 struct ErlTask {
 public:
-    nifpp::str_atom cb_name;
+    ErlNifPid cb_pid;
     uint64_t cb_id;
     int conn;
     int stmt;
     TAOS_FUNC func;
     void* args;
 
-    explicit ErlTask(nifpp::str_atom& cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args);
+    explicit ErlTask(ErlNifPid cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args);
     ~ErlTask();
 
     static ErlTask* create(ErlNifEnv* env, const ERL_NIF_TERM* argv);

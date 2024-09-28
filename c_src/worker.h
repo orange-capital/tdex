@@ -20,7 +20,6 @@ private:
     std::atomic_bool _is_stop;
     ErlNifTid _tid;
     ErlNifEnv* _env;
-    std::mutex _env_mut;
     uint32_t _taos_conn_ptr;
     uint32_t _taos_stmt_ptr;
     std::map<int, TAOS*> _taos_conn;
@@ -41,7 +40,7 @@ public:
 
     void taos_close(ErlTask *pTask);
 
-    inline void reply(ErlTask* task, nifpp::TERM term);
+    inline void reply(ErlTask* task, nifpp::TERM& term);
 
     inline void reply_error(ErlTask *pTask, const char *string);
 

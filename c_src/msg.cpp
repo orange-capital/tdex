@@ -3,7 +3,7 @@
 //
 #include "msg.h"
 
-ErlTask::ErlTask(nifpp::str_atom& _cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args): cb_name(_cb_pid) {
+ErlTask::ErlTask(ErlNifPid _cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args): cb_pid(_cb_pid) {
     this->cb_id = cb_id;
     this->conn = conn;
     this->stmt = stmt;
@@ -13,7 +13,7 @@ ErlTask::ErlTask(nifpp::str_atom& _cb_pid, uint64_t& cb_id, int& conn, int& stmt
 
 ErlTask *ErlTask::create(ErlNifEnv* env, const ERL_NIF_TERM *argv) {
     try {
-        nifpp::str_atom cb_pid;
+        ErlNifPid cb_pid;
         uint64_t cb_id;
         int conn, stmt, func, func_min, func_max;
         nifpp::get_throws(env, argv[0], cb_pid);

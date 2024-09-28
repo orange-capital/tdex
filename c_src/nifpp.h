@@ -516,7 +516,9 @@ inline TERM make(ErlNifEnv *env, str_bin &var)
     ErlNifBinary bin;
     enif_alloc_binary(var.size(), &bin);
     memcpy(bin.data, var.c_str(), bin.size);
-    return TERM(enif_make_binary(env, &bin));
+    ERL_NIF_TERM term = enif_make_binary(env, &bin);
+    enif_release_binary(&bin);
+    return TERM(term);
 }
 inline TERM make(ErlNifEnv *env, vec_bin &var)
 {

@@ -191,15 +191,14 @@ defmodule TDex.Wrapper do
   defp encode_data(:UBIGINT, value), do: <<value :: 64-little>>
   defp encode_data(:FLOAT, value), do: <<value :: 32-little-float>>
   defp encode_data(:DOUBLE, value), do: <<value :: 64-little-float>>
-  defp encode_data({:TIMESTAMP, unit}, value) when is_map(value) do
-    epoch = TDex.Timestamp.to_unix(value, unit)
+  defp encode_data({:TIMESTAMP, unit}, value) do
+    epoch = if is_map(value), do: TDex.Timestamp.to_unix(value, unit), else: value
     <<epoch :: 64-little-signed>>
   end
-  defp encode_data(:TIMESTAMP, value) when is_map(value) do
-    epoch = TDex.Timestamp.to_unix(value, :millisecond)
+  defp encode_data(:TIMESTAMP, value) do
+    epoch = if is_map(value), do: TDex.Timestamp.to_unix(value, :millisecond), else: value
     <<epoch :: 64-little-signed>>
   end
-  defp encode_data(:TIMESTAMP, value) when is_integer(value), do: <<value :: 64-little-signed>>
   defp encode_data({var_type, var_len}, value) when is_list(value) do
     encode_data({var_type, var_len}, :erlang.iolist_to_binary(value))
   end

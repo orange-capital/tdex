@@ -24,6 +24,7 @@ defmodule TDex.Native.Async do
 
   def init(args) do
     reset_timer(:check_tick, :check_tick, 1000)
+    Process.flag(:fullsweep_after, 0)
     {:ok, %{id: args.id, name: worker_name(args.id), queries: [], query_data: %{}, query_ptr: 0}}
   end
 
@@ -74,10 +75,10 @@ defmodule TDex.Native.Async do
     end
     case List.keyfind(queries, id, 0) do
       nil ->
-        {:noreply, %{state| query_data: Map.delete(query_data, id)}}
+        {:noreply, %{state| query_data: Map.delete(query_data, id)}, :hibernate}
       {^id, from, _timeout_at} ->
         GenServer.reply(from, reply)
-        {:noreply, %{state| queries: List.keydelete(queries, id, 0), query_data: Map.delete(query_data, id)}}
+        {:noreply, %{state| queries: List.keydelete(queries, id, 0), query_data: Map.delete(query_data, id)},  :hibernate}
     end
   end
 

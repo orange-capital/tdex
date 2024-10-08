@@ -231,7 +231,6 @@ defmodule TDex.Wrapper do
   @func_value_map [
     :CONNECT,
     :CLOSE,
-    :OPTION,
     :GET_SERVER_INFO,
     :GET_CLIENT_INFO,
     :GET_CURRENT_DB,

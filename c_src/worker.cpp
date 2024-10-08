@@ -84,12 +84,10 @@ void Worker::stop() {
     }
 }
 
-Worker::Worker(int id) : _is_stop(true), _tid(nullptr), _env(nullptr) {
+Worker::Worker(int id) : _is_stop(true), _tid(nullptr) {
     _taos_conn_ptr = 0;
     _taos_stmt_ptr = 0;
     _id = id;
-    _env = enif_alloc_env();
-    assert(_env != nullptr);
     _taos_conn.clear();
     _taos_stmt.clear();
 }
@@ -117,8 +115,6 @@ Worker::~Worker() {
     }
     _taos_stmt.clear();
     _taos_conn.clear();
-    // free env
-    enif_free_env(_env);
 }
 
 void* worker_run(void* args) {
@@ -172,7 +168,7 @@ void Worker::process(ErlTask* task) {
             this->taos_get_server_info(task);
             break;
         case TAOS_FUNC::GET_CLIENT_INFO:
-            this->taos_get_client_info(task);
+            Worker::taos_get_client_info(task);
             break;
         case TAOS_FUNC::GET_CURRENT_DB:
             this->taos_get_current_db(task);
@@ -181,7 +177,7 @@ void Worker::process(ErlTask* task) {
             this->taos_select_db(task);
             break;
         default:
-            this->reply_error_str(task, "not_implemented");
+            Worker::reply_error_str(task, "not_implemented");
             break;
     }
 }
@@ -206,7 +202,6 @@ int Worker::process_batch() {
         _queue_mut.unlock();
         this->process(task);
         delete task;
-        enif_clear_env(_env);
         ret++;
     }
     return ret;
@@ -214,28 +209,28 @@ int Worker::process_batch() {
 
 inline void Worker::reply(ErlTask* task, nifpp::TERM& term) {
     std::tuple<nifpp::str_atom, uint64_t, nifpp::TERM> reply_tup = std::tie("taos_reply", task->cb_id, term);
-    enif_send(nullptr, &task->cb_pid, _env, nifpp::make(_env, reply_tup));
+    enif_send(nullptr, &task->cb_pid, task->env, nifpp::make(task->env, reply_tup));
 }
 
 inline void Worker::reply_error(ErlTask *task, const char *reason) {
     std::tuple<nifpp::str_atom, nifpp::str_atom> error_tup = std::tie("error", reason);
-    auto error_term = nifpp::make(this->_env, error_tup);
-    this->reply(task, error_term);
+    auto error_term = nifpp::make(task->env, error_tup);
+    Worker::reply(task, error_term);
 }
 
-inline void Worker::reply_error_str(ErlTask *pTask, const char *message) {
-    nifpp::atom error(_env, "error");
+inline void Worker::reply_error_str(ErlTask *task, const char *message) {
+    nifpp::atom error(task->env, "error");
     nifpp::str_bin reason(message);
     auto error_tup = std::tie(error, reason);
-    auto error_term = nifpp::make(this->_env, error_tup);
-    this->reply(pTask, error_term);
+    auto error_term = nifpp::make(task->env, error_tup);
+    Worker::reply(task, error_term);
 }
 
 void Worker::taos_connect(ErlTask *task) {
     if (task->conn < 0) {
         auto* args = static_cast<TaskConnectArgs *>(task->args);
         if (args == nullptr) {
-            this->reply_error(task, "invalid_arg");
+            Worker::reply_error(task, "invalid_arg");
             return;
         }
         TAOS* conn = nullptr;
@@ -245,7 +240,7 @@ void Worker::taos_connect(ErlTask *task) {
             conn = ::taos_connect_auth(args->host.c_str(), args->user.c_str(), args->passwd.c_str(), args->database.c_str(), args->port);
         }
         if (conn == nullptr) {
-            this->reply_error_str(task, ::taos_errstr(nullptr));
+            Worker::reply_error_str(task, ::taos_errstr(nullptr));
             return;
         }
         task->conn = (int )((_id << 16 ) | _taos_conn_ptr);
@@ -255,10 +250,10 @@ void Worker::taos_connect(ErlTask *task) {
         }
         _taos_conn[task->conn] = conn;
         std::tuple<nifpp::str_atom, int> ok_tup = std::tie("ok", task->conn);
-        auto ok_term = nifpp::make(_env, ok_tup);
-        this->reply(task, ok_term);
+        auto ok_term = nifpp::make(task->env, ok_tup);
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(task, "conflict_conn");
+        Worker::reply_error(task, "conflict_conn");
     }
 }
 
@@ -267,10 +262,10 @@ void Worker::taos_close(ErlTask *task) {
     if (it != _taos_conn.end()) {
         ::taos_close(it->second);
         _taos_conn.erase(it);
-        auto ok_term = nifpp::make(_env, nifpp::str_atom("ok"));
-        this->reply(task, ok_term);
+        auto ok_term = nifpp::make(task->env, nifpp::str_atom("ok"));
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(task, "invalid_conn");
+        Worker::reply_error(task, "invalid_conn");
     }
 }
 
@@ -281,10 +276,10 @@ void Worker::taos_get_server_info(ErlTask *task) {
         nifpp::str_atom atom_ok("ok");
         nifpp::str_bin server_bin(server_info);
         auto ok_tup = std::tie(atom_ok, server_bin);
-        auto ok_term = nifpp::make(_env, ok_tup);
-        this->reply(task, ok_term);
+        auto ok_term = nifpp::make(task->env, ok_tup);
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(task, "invalid_conn");
+        Worker::reply_error(task, "invalid_conn");
     }
 }
 
@@ -293,76 +288,76 @@ void Worker::taos_get_client_info(ErlTask *task) {
     nifpp::str_atom atom_ok("ok");
     nifpp::str_bin client_bin(client_info);
     auto ok_tup = std::tie(atom_ok, client_bin);
-    auto ok_term = nifpp::make(_env, ok_tup);
-    this->reply(task, ok_term);
+    auto ok_term = nifpp::make(task->env, ok_tup);
+    Worker::reply(task, ok_term);
 }
 
-void Worker::taos_get_current_db(ErlTask *pTask) {
-    auto it = _taos_conn.find(pTask->conn);
+void Worker::taos_get_current_db(ErlTask *task) {
+    auto it = _taos_conn.find(task->conn);
     if (it != _taos_conn.end()) {
         char db_name[TAOS_DB_NAME_LEN_MAX];
         int required_len = 0;
         memset(db_name, 0, TAOS_DB_NAME_LEN_MAX);
         if (::taos_get_current_db(it->second, db_name, TAOS_DB_NAME_LEN_MAX, &required_len) != 0) {
-            this->reply_error(pTask, "db_name_too_big");
+            Worker::reply_error(task, "db_name_too_big");
             return;
         }
         nifpp::str_atom atom_ok("ok");
         nifpp::str_bin db_name_bin(db_name);
         auto ok_tup = std::tie(atom_ok, db_name_bin);
-        auto ok_term = nifpp::make(_env, ok_tup);
-        this->reply(pTask, ok_term);
+        auto ok_term = nifpp::make(task->env, ok_tup);
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(pTask, "invalid_conn");
+        Worker::reply_error(task, "invalid_conn");
     }
 }
 
-void Worker::taos_select_db(ErlTask *pTask) {
-    auto it = _taos_conn.find(pTask->conn);
+void Worker::taos_select_db(ErlTask *task) {
+    auto it = _taos_conn.find(task->conn);
     if (it != _taos_conn.end()) {
-        auto* args = static_cast<TaskQueryArgs*>(pTask->args);
+        auto* args = static_cast<TaskQueryArgs*>(task->args);
         if (args == nullptr) {
-            this->reply_error(pTask, "invalid_arg");
+            Worker::reply_error(task, "invalid_arg");
             return;
         }
         if(::taos_select_db(it->second, args->sql.c_str()) != 0) {
-            this->reply_error_str(pTask, ::taos_errstr(nullptr));
+            Worker::reply_error_str(task, ::taos_errstr(nullptr));
             return;
         }
-        auto ok_term = nifpp::make(_env, nifpp::str_atom("ok"));
-        this->reply(pTask, ok_term);
+        auto ok_term = nifpp::make(task->env, nifpp::str_atom("ok"));
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(pTask, "invalid_conn");
+        Worker::reply_error(task, "invalid_conn");
     }
 }
 
 
-void Worker::taos_query(ErlTask *pTask) {
-    auto it = _taos_conn.find(pTask->conn);
+void Worker::taos_query(ErlTask *task) {
+    auto it = _taos_conn.find(task->conn);
     if (it != _taos_conn.end()) {
-        auto* args = static_cast<TaskQueryArgs*>(pTask->args);
+        auto* args = static_cast<TaskQueryArgs*>(task->args);
         if (args == nullptr) {
-            this->reply_error(pTask, "invalid_arg");
+            Worker::reply_error(task, "invalid_arg");
             return;
         }
         TAOS_RES* res = ::taos_query(it->second, args->sql.c_str());
         if (taos_errno(res) != 0) {
-            this->reply_error_str(pTask, ::taos_errstr(res));
+            Worker::reply_error_str(task, ::taos_errstr(res));
             ::taos_free_result(res);
             return;
         }
-        this->taos_query_res(pTask, res);
+        Worker::taos_query_res(task, res);
         ::taos_free_result(res);
     } else {
-        this->reply_error(pTask, "invalid_conn");
+        Worker::reply_error(task, "invalid_conn");
     }
 }
 
-void Worker::taos_query_a(ErlTask *pTask) {
-    this->reply_error(pTask, "not_implemented");
+void Worker::taos_query_a(ErlTask *task) {
+    Worker::reply_error(task, "not_implemented");
 }
 
-void Worker::taos_query_res(ErlTask *pTask, TAOS_RES *res) {
+void Worker::taos_query_res(ErlTask *task, TAOS_RES *res) {
     int precision = ::taos_result_precision(res);
     int affected_rows = ::taos_affected_rows(res);
     int field_count = ::taos_field_count(res);
@@ -370,15 +365,15 @@ void Worker::taos_query_res(ErlTask *pTask, TAOS_RES *res) {
     TAOS_ROW  row = nullptr;
     std::vector<nifpp::TERM> header, body;
     if (fields == nullptr && field_count > 0) {
-        this->reply_error_str(pTask, "taos_fetch_fields -> NULL");
+        Worker::reply_error_str(task, "taos_fetch_fields -> NULL");
         return;
     }
     // header
     for (int i = 0; i < field_count; i++) {
-        nifpp::TERM field_name = nifpp::make(_env, fields[i].name, ERL_NIF_UTF8);
+        nifpp::TERM field_name = nifpp::make(task->env, fields[i].name, ERL_NIF_UTF8);
         int field_type = fields[i].type;
         auto tup = std::tie(field_name, field_type);
-        header.push_back(nifpp::make(_env, tup));
+        header.push_back(nifpp::make(task->env, tup));
     }
     // row
     while ((row = ::taos_fetch_row(res))) {
@@ -395,136 +390,136 @@ void Worker::taos_query_res(ErlTask *pTask, TAOS_RES *res) {
         std::vector<nifpp::TERM> row_data;
         for(int i = 0; i < field_count; i++) {
             if(fields[i].bytes == 0) {
-                row_data.push_back(nifpp::make(_env, nifpp::str_atom("nil")));
+                row_data.push_back(nifpp::make(task->env, nifpp::str_atom("nil")));
                 continue;
             }
             switch (fields[i].type) {
                 case TSDB_DATA_TYPE_NULL:
-                    row_data.push_back(nifpp::make(_env, nifpp::str_atom("nil")));
+                    row_data.push_back(nifpp::make(task->env, nifpp::str_atom("nil")));
                     break;
                 case TSDB_DATA_TYPE_BOOL:
                     int8_val = *((int8_t *)row[i]);
                     if(int8_val) {
-                        row_data.push_back(nifpp::make(_env, nifpp::str_atom("true")));
+                        row_data.push_back(nifpp::make(task->env, nifpp::str_atom("true")));
                     } else {
-                        row_data.push_back(nifpp::make(_env, nifpp::str_atom("false")));
+                        row_data.push_back(nifpp::make(task->env, nifpp::str_atom("false")));
                     }
                     break;
                 case TSDB_DATA_TYPE_TINYINT:
                     int8_val = *((int8_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, int8_val));
+                    row_data.push_back(nifpp::make(task->env, int8_val));
                     break;
                 case TSDB_DATA_TYPE_UTINYINT:
                     uint8_val = *((uint8_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, uint8_val));
+                    row_data.push_back(nifpp::make(task->env, uint8_val));
                     break;
                 case TSDB_DATA_TYPE_SMALLINT:
                     int16_val = *((int16_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, int16_val));
+                    row_data.push_back(nifpp::make(task->env, int16_val));
                     break;
                 case TSDB_DATA_TYPE_USMALLINT:
                     uint16_val = *((uint16_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, uint16_val));
+                    row_data.push_back(nifpp::make(task->env, uint16_val));
                     break;
                 case TSDB_DATA_TYPE_INT:
                     int32_val = *((int32_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, int32_val));
+                    row_data.push_back(nifpp::make(task->env, int32_val));
                     break;
                 case TSDB_DATA_TYPE_UINT:
                     uint32_val = *((uint32_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, uint32_val));
+                    row_data.push_back(nifpp::make(task->env, uint32_val));
                     break;
                 case TSDB_DATA_TYPE_BIGINT:
                 case TSDB_DATA_TYPE_TIMESTAMP:
                     int64_val = *((int64_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, int64_val));
+                    row_data.push_back(nifpp::make(task->env, int64_val));
                     break;
                 case TSDB_DATA_TYPE_UBIGINT:
                     uint64_val = *((uint64_t *)row[i]);
-                    row_data.push_back(nifpp::make(_env, uint64_val));
+                    row_data.push_back(nifpp::make(task->env, uint64_val));
                     break;
                 case TSDB_DATA_TYPE_FLOAT:
                     float_val = *((float *)row[i]);
-                    row_data.push_back(nifpp::make(_env, float_val));
+                    row_data.push_back(nifpp::make(task->env, float_val));
                     break;
                 case TSDB_DATA_TYPE_DOUBLE:
                     double_val = *((double *)row[i]);
-                    row_data.push_back(nifpp::make(_env, double_val));
+                    row_data.push_back(nifpp::make(task->env, double_val));
                     break;
                 default:
                     uint16_val = *((uint16_t*)((uint8_t*)row[i] - VARSTR_HEADER_SIZE));
                     nifpp::binary bin_val(uint16_val);
                     memcpy(bin_val.data, row[i], bin_val.size);
-                    row_data.push_back(nifpp::make(_env, bin_val));
+                    row_data.push_back(nifpp::make(task->env, bin_val));
                     break;
             }
         }
-        body.push_back(nifpp::make(_env, row_data));
+        body.push_back(nifpp::make(task->env, row_data));
     }
     // reply
     nifpp::str_atom atom_ok("ok");
     auto header_tup = std::tie(precision, affected_rows, header);
     auto msg_tup = std::tie(atom_ok, header_tup, body);
-    auto msg_term = nifpp::make(_env, msg_tup);
-    this->reply(pTask, msg_term);
+    auto msg_term = nifpp::make(task->env, msg_tup);
+    Worker::reply(task, msg_term);
 }
 
-void Worker::taos_stmt_close(ErlTask *pTask) {
-    auto it = _taos_stmt.find(pTask->stmt);
+void Worker::taos_stmt_close(ErlTask *task) {
+    auto it = _taos_stmt.find(task->stmt);
     if (it != _taos_stmt.end()) {
         ::taos_stmt_close(it->second);
         _taos_stmt.erase(it);
-        auto ok_term = nifpp::make(_env, nifpp::str_atom("ok"));
-        this->reply(pTask, ok_term);
+        auto ok_term = nifpp::make(task->env, nifpp::str_atom("ok"));
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(pTask, "invalid_stmt");
+        Worker::reply_error(task, "invalid_stmt");
     }
 }
 
-void Worker::taos_stmt_prepare(ErlTask *pTask) {
-    auto it = _taos_conn.find(pTask->conn);
+void Worker::taos_stmt_prepare(ErlTask *task) {
+    auto it = _taos_conn.find(task->conn);
     if (it != _taos_conn.end()) {
-        auto* args = static_cast<TaskQueryArgs*>(pTask->args);
+        auto* args = static_cast<TaskQueryArgs*>(task->args);
         if (args == nullptr) {
-            this->reply_error(pTask, "invalid_arg");
+            Worker::reply_error(task, "invalid_arg");
             return;
         }
         TAOS_STMT *stmt = ::taos_stmt_init(it->second);
         if (stmt == nullptr) {
-            this->reply_error(pTask, "stmt_init");
+            Worker::reply_error(task, "stmt_init");
             return;
         }
         if(::taos_stmt_prepare(stmt, args->sql.c_str(), args->sql.size())) {
-            this->reply_error_str(pTask, ::taos_stmt_errstr(stmt));
+            Worker::reply_error_str(task, ::taos_stmt_errstr(stmt));
             ::taos_stmt_close(stmt);
             return;
         }
-        pTask->stmt = (int )((_id << 16 ) | _taos_stmt_ptr);
+        task->stmt = (int )((_id << 16 ) | _taos_stmt_ptr);
         _taos_stmt_ptr += 1;
         if (_taos_stmt_ptr > UINT16_MAX) {
             _taos_stmt_ptr = 0;
         }
-        _taos_stmt[pTask->stmt] = stmt;
-        std::tuple<nifpp::str_atom, int> ok_tup = std::tie("ok", pTask->stmt);
-        auto ok_term = nifpp::make(_env, ok_tup);
-        this->reply(pTask, ok_term);
+        _taos_stmt[task->stmt] = stmt;
+        std::tuple<nifpp::str_atom, int> ok_tup = std::tie("ok", task->stmt);
+        auto ok_term = nifpp::make(task->env, ok_tup);
+        Worker::reply(task, ok_term);
     } else {
-        this->reply_error(pTask, "invalid_conn");
+        Worker::reply_error(task, "invalid_conn");
     }
 }
 
-void Worker::taos_stmt_execute(ErlTask *pTask) {
+void Worker::taos_stmt_execute(ErlTask *task) {
     int ret_code = 0;
     char is_null = 1;
-    auto it = _taos_stmt.find(pTask->stmt);
+    auto it = _taos_stmt.find(task->stmt);
     if (it != _taos_stmt.end()) {
-        auto* args = static_cast<TaskExecuteArgs*>(pTask->args);
+        auto* args = static_cast<TaskExecuteArgs*>(task->args);
         if (args == nullptr) {
-            this->reply_error(pTask, "invalid_arg");
+            Worker::reply_error(task, "invalid_arg");
             return;
         }
         if (args->types.size() != args->params.size()) {
-            this->reply_error(pTask, "spec_data_not_match");
+            Worker::reply_error(task, "spec_data_not_match");
             return;
         }
         auto bind_params = new TAOS_MULTI_BIND[args->types.size()];
@@ -571,27 +566,27 @@ void Worker::taos_stmt_execute(ErlTask *pTask) {
         ret_code = ::taos_stmt_bind_param_batch(it->second, bind_params);
         delete[] bind_params;
         if (ret_code != 0) {
-            this->reply_error_str(pTask, ::taos_stmt_errstr(it->second));
+            Worker::reply_error_str(task, ::taos_stmt_errstr(it->second));
             return;
         }
         if (::taos_stmt_add_batch(it->second) != 0) {
-            this->reply_error_str(pTask, ::taos_stmt_errstr(it->second));
+            Worker::reply_error_str(task, ::taos_stmt_errstr(it->second));
             return;
         }
         if (::taos_stmt_execute(it->second) != 0) {
-            this->reply_error_str(pTask, ::taos_stmt_errstr(it->second));
+            Worker::reply_error_str(task, ::taos_stmt_errstr(it->second));
             return;
         }
         TAOS_RES* res = ::taos_stmt_use_result(it->second);
         ret_code = taos_errno(res);
         if (ret_code != 0) {
-            this->reply_error_str(pTask, ::taos_errstr(res));
+            Worker::reply_error_str(task, ::taos_errstr(res));
             ::taos_free_result(res);
             return;
         }
-        this->taos_query_res(pTask, res);
+        Worker::taos_query_res(task, res);
         ::taos_free_result(res);
     } else {
-        this->reply_error(pTask, "invalid_stmt");
+        Worker::reply_error(task, "invalid_stmt");
     }
 }

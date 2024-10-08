@@ -19,7 +19,6 @@ private:
     int _id;
     std::atomic_bool _is_stop;
     ErlNifTid _tid;
-    ErlNifEnv* _env;
     uint32_t _taos_conn_ptr;
     uint32_t _taos_stmt_ptr;
     std::map<int, TAOS*> _taos_conn;
@@ -40,31 +39,31 @@ public:
 
     void taos_close(ErlTask *pTask);
 
-    inline void reply(ErlTask* task, nifpp::TERM& term);
+    static inline void reply(ErlTask* task, nifpp::TERM& term);
 
-    inline void reply_error(ErlTask *pTask, const char *string);
+    static inline void reply_error(ErlTask *task, const char *string);
 
-    inline void reply_error_str(ErlTask *pTask, const char *string);
+    static inline void reply_error_str(ErlTask *task, const char *string);
 
-    void taos_get_server_info(ErlTask *pTask);
+    void taos_get_server_info(ErlTask *task);
 
-    void taos_get_client_info(ErlTask *pTask);
+    static void taos_get_client_info(ErlTask *task);
 
-    void taos_get_current_db(ErlTask *pTask);
+    void taos_get_current_db(ErlTask *task);
 
-    void taos_select_db(ErlTask *pTask);
+    void taos_select_db(ErlTask *task);
 
-    void taos_query_a(ErlTask *pTask);
+    void taos_query_a(ErlTask *task);
 
-    void taos_query(ErlTask *pTask);
+    void taos_query(ErlTask *task);
 
-    void taos_query_res(ErlTask *pTask, TAOS_RES *res);
+    static void taos_query_res(ErlTask *task, TAOS_RES *res);
 
-    void taos_stmt_close(ErlTask *pTask);
+    void taos_stmt_close(ErlTask *task);
 
-    void taos_stmt_prepare(ErlTask *pTask);
+    void taos_stmt_prepare(ErlTask *task);
 
-    void taos_stmt_execute(ErlTask *pTask);
+    void taos_stmt_execute(ErlTask *task);
 };
 
 class WorkerManager {

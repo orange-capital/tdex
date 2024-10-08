@@ -10,7 +10,6 @@
 enum class TAOS_FUNC {
     CONNECT = 0,
     CLOSE,
-    OPTION,
     GET_SERVER_INFO,
     GET_CLIENT_INFO,
     GET_CURRENT_DB,
@@ -60,6 +59,7 @@ public:
     int stmt;
     TAOS_FUNC func;
     void* args;
+    ErlNifEnv* env;
 
     explicit ErlTask(ErlNifPid cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args);
     ~ErlTask();

@@ -3,12 +3,14 @@
 //
 #include "msg.h"
 
-ErlTask::ErlTask(ErlNifPid _cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args): cb_pid(_cb_pid) {
+ErlTask::ErlTask(ErlNifPid _cb_pid, uint64_t& cb_id, int& conn, int& stmt, TAOS_FUNC func, void* args): cb_pid(_cb_pid), env(nullptr) {
     this->cb_id = cb_id;
     this->conn = conn;
     this->stmt = stmt;
     this->func = func;
     this->args = args;
+    this->env = enif_alloc_env();
+    assert(this->env != nullptr);
 }
 
 ErlTask *ErlTask::create(ErlNifEnv* env, const ERL_NIF_TERM *argv) {
@@ -50,6 +52,10 @@ ErlTask *ErlTask::create(ErlNifEnv* env, const ERL_NIF_TERM *argv) {
 }
 
 ErlTask::~ErlTask() {
+    if (this->env != nullptr) {
+        enif_clear_env(this->env);
+        enif_free_env(this->env);
+    }
     if (this->args != nullptr) {
         TaskConnectArgs* connect = nullptr;
         TaskQueryArgs* query = nullptr;

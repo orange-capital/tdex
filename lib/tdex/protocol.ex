@@ -134,8 +134,10 @@ defmodule TDex.DBConnection do
     end
     case result do
       {:ok, header, body} ->
+        protocol.close_stmt(protocol_state, query.cache)
         {:ok, query, to_result(opts, query.spec, header, body), state}
       {:error, reason} ->
+        protocol.close_stmt(protocol_state, query.cache)
         {:error, %TDex.Error{message: reason}, state}
     end
   catch _, exp ->

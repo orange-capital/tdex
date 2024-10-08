@@ -26,7 +26,9 @@ defmodule TDex.Native do
   end
 
   def close_stmt(conn, stmt) do
-    Wrapper.taos_stmt_close({conn, stmt})
+    if stmt != nil do
+      Wrapper.taos_stmt_close({conn, stmt})
+    end
   end
 
   def close(conn) do

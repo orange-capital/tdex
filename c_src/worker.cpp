@@ -243,6 +243,7 @@ void Worker::taos_connect(ErlTask *task) {
             Worker::reply_error_str(task, ::taos_errstr(nullptr));
             return;
         }
+        ::taos_options(TSDB_OPTION_TIMEZONE, "UTC");
         task->conn = (int )((_id << 16 ) | _taos_conn_ptr);
         _taos_conn_ptr += 1;
         if (_taos_conn_ptr > UINT16_MAX) {

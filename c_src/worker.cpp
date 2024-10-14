@@ -234,6 +234,7 @@ void Worker::taos_connect(ErlTask *task) {
             return;
         }
         TAOS* conn = nullptr;
+        ::taos_options(TSDB_OPTION_TIMEZONE, "UTC");
         if (args->is_hash == 0) {
             conn = ::taos_connect(args->host.c_str(), args->user.c_str(), args->passwd.c_str(), args->database.c_str(), args->port);
         } else {
@@ -243,7 +244,6 @@ void Worker::taos_connect(ErlTask *task) {
             Worker::reply_error_str(task, ::taos_errstr(nullptr));
             return;
         }
-        ::taos_options(TSDB_OPTION_TIMEZONE, "UTC");
         task->conn = (int )((_id << 16 ) | _taos_conn_ptr);
         _taos_conn_ptr += 1;
         if (_taos_conn_ptr > UINT16_MAX) {

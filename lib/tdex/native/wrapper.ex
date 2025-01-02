@@ -19,15 +19,15 @@ defmodule TDex.Wrapper do
   end
 
   def call_nif(_cb_pid, _cb_id, _conn, _stmt, _func_id, _func_args) do
-    raise "call_nif not implemented"
+    :erlang.nif_error(:not_implemented)
   end
 
   def start_nif(_num_worker) do
-    raise "start_nif not implemented"
+    :erlang.nif_error(:not_implemented)
   end
 
   def stop_nif() do
-    raise "stop_nif not implemented"
+    :erlang.nif_error(:not_implemented)
   end
 
   @spec taos_connect(ip :: String.t(), port :: non_neg_integer, user :: String.t(), passwd:: {:md5, String.t()} | String.t(), db :: String.t()) :: {:ok, conn_t} | {:error, term}
@@ -49,7 +49,7 @@ defmodule TDex.Wrapper do
   @spec taos_options(op :: atom(), value :: String.t()) :: :ok | {:error, term}
   def taos_options(op, value) do
     func_args = {option_value(op), nif_string(value)}
-    TDex.Native.Async.call({-1, -1, func_value(:OPTION), func_args})
+    TDex.Native.Async.call({-1, -1, func_value(:OPTIONS), func_args})
   end
 
   @spec taos_select_db(conn :: conn_t, db :: String.t()) :: :ok | {:error, term}

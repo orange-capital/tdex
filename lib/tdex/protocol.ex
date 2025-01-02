@@ -109,7 +109,7 @@ defmodule TDex.DBConnection do
     end
     cols_map = Map.new(columns)
     rows = Enum.reduce(body, [], fn x, acc ->
-      row = List.zip([key_names, x]) |> fix_timestamp_col(ts_unit, cols_map) |> Map.new()
+      row = Enum.zip([key_names, x]) |> fix_timestamp_col(ts_unit, cols_map) |> Map.new()
       [row| acc]
     end) |> Enum.reverse()
     %TDex.Result{

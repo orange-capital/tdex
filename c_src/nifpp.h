@@ -52,6 +52,7 @@
 #endif
 #include <cassert>
 #include <cstring>
+#include <cstdint>
 
 namespace nifpp
 {
